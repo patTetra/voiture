@@ -73,14 +73,14 @@
   .ctrl-label{font-size:13px; color:var(--text-dim); font-weight:500;}
   .ctrl-state{font-size:15.5px; font-weight:600; margin-top:auto;}
   .icon-btn{width:34px; height:34px; border-radius:50%; border:none; background:var(--bg-raised); color:var(--text);
-    display:flex; align-items:center; justify-content:center; flex:none; transition:transform .12s ease, background .15s;}
+    display:flex; align-items:center; justify-content:center; flex:none; transition:transform .12s ease, background .15s; cursor:pointer;}
   .icon-btn:active{transform:scale(.9); background:var(--ice-dim);}
   .icon-btn.on{background:var(--ice-dim); color:var(--ice);}
   .icon-btn.amber.on{background:var(--amber-dim); color:var(--amber);}
 
   .full-btn{width:100%; padding:13px; border-radius:var(--radius-sm); border:1px solid var(--line);
     background:var(--bg-card); color:var(--text); font-size:14.5px; font-weight:600; text-align:center;
-    transition:transform .12s ease, background .15s; margin-top:2px;}
+    transition:transform .12s ease, background .15s; margin-top:2px; cursor:pointer;}
   .full-btn:active{transform:scale(.97);}
   .full-btn.primary{background:linear-gradient(135deg, var(--ice), #3aa9ba); color:#04262b; border:none;}
   .full-btn.ghost{background:transparent; color:var(--text-dim);}
@@ -89,7 +89,7 @@
   .stepper{display:flex; align-items:center; justify-content:space-between; background:var(--bg-raised);
     border-radius:var(--radius-sm); padding:8px 6px;}
   .stepper button{width:36px; height:36px; border:none; border-radius:50%; background:transparent; color:var(--text);
-    font-size:19px; font-family:'Space Grotesk'; }
+    font-size:19px; font-family:'Space Grotesk'; cursor:pointer;}
   .stepper button:active{background:var(--line);}
   .stepper .val{font-size:17px; font-weight:600; font-variant-numeric: tabular-nums;}
 
@@ -110,14 +110,14 @@
   .time-input{background:var(--bg-raised); border:1px solid var(--line); border-radius:var(--radius-sm); color:var(--text);
     font-family:'Space Grotesk'; font-size:24px; font-weight:600; padding:10px 14px; width:118px; text-align:center;}
   .toggle{width:46px; height:27px; border-radius:20px; background:var(--bg-raised); border:1px solid var(--line);
-    position:relative; flex:none; transition:background .2s;}
+    position:relative; flex:none; transition:background .2s; cursor:pointer;}
   .toggle::after{content:''; position:absolute; width:21px; height:21px; border-radius:50%; background:var(--text-faint);
     top:2px; left:2px; transition:transform .2s, background .2s;}
   .toggle.on{background:var(--ice-dim); border-color:var(--ice);}
   .toggle.on::after{transform:translateX(19px); background:var(--ice);}
   .days{display:flex; gap:6px; margin-top:14px;}
   .day{flex:1; text-align:center; padding:8px 0; border-radius:10px; background:var(--bg-raised); border:1px solid var(--line);
-    font-size:12.5px; color:var(--text-faint); font-weight:600;}
+    font-size:12.5px; color:var(--text-faint); font-weight:600; cursor:pointer;}
   .day.on{background:var(--ice-dim); color:var(--ice); border-color:var(--ice);}
   .dep-info{margin-top:14px; padding:12px 14px; background:var(--bg-raised); border-radius:var(--radius-sm);
     font-size:12.5px; color:var(--text-dim); line-height:1.5;}
@@ -153,7 +153,7 @@
   .hint{font-size:11.5px; color:var(--text-faint); line-height:1.5; margin:8px 2px 16px;}
   .tab-bar{position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:center; padding-bottom:var(--safe-bottom); z-index:15;}
   .gear{width:50px; height:50px; border-radius:50%; background:var(--bg-card); border:1px solid var(--line);
-    display:flex; align-items:center; justify-content:center; margin-bottom:14px; box-shadow:0 6px 20px rgba(0,0,0,.35);}
+    display:flex; align-items:center; justify-content:center; margin-bottom:14px; box-shadow:0 6px 20px rgba(0,0,0,.35); cursor:pointer;}
   .gear:active{transform:scale(.93);}
   .toast{position:fixed; top:calc(var(--safe-top) + 10px); left:50%; transform:translateX(-50%) translateY(-140%);
     background:var(--bg-card); border:1px solid var(--line); color:var(--text); font-size:13px; padding:10px 16px;
@@ -237,23 +237,23 @@
     <svg class="cabin-svg" width="220" height="200" viewBox="0 0 220 200">
       <rect x="18" y="8" width="184" height="184" rx="46" fill="none" stroke="var(--line)" stroke-width="2"/>
       <rect x="70" y="0" width="80" height="20" rx="8" fill="var(--bg-raised)" stroke="var(--line)"/>
-      <g class="seat" id="seat-avG" data-e="select.tesla_model_y_siege_chauffant_gauche">
+      <g class="seat" id="seat-avG">
         <rect x="34" y="34" width="60" height="60" rx="14" fill="var(--bg-raised)" stroke="var(--line)" stroke-width="1.5"/>
         <text x="64" y="68">AV. GAUCHE</text>
       </g>
-      <g class="seat" id="seat-avD" data-e="select.tesla_model_y_siege_chauffant_droit">
+      <g class="seat" id="seat-avD">
         <rect x="126" y="34" width="60" height="60" rx="14" fill="var(--bg-raised)" stroke="var(--line)" stroke-width="1.5"/>
         <text x="156" y="68">AV. DROIT</text>
       </g>
-      <g class="seat" id="seat-arG" data-e="select.tesla_model_y_siege_chauffant_arriere_gauche">
+      <g class="seat" id="seat-arG">
         <rect x="24" y="120" width="52" height="56" rx="13" fill="var(--bg-raised)" stroke="var(--line)" stroke-width="1.5"/>
         <text x="50" y="151">AR. GAUCHE</text>
       </g>
-      <g class="seat" id="seat-arC" data-e="select.tesla_model_y_siege_chauffant_arriere_central">
+      <g class="seat" id="seat-arC">
         <rect x="84" y="128" width="52" height="48" rx="13" fill="var(--bg-raised)" stroke="var(--line)" stroke-width="1.5"/>
         <text x="110" y="155">CENTRE</text>
       </g>
-      <g class="seat" id="seat-arD" data-e="select.tesla_model_y_siege_chauffant_arriere_droit">
+      <g class="seat" id="seat-arD">
         <rect x="144" y="120" width="52" height="56" rx="13" fill="var(--bg-raised)" stroke="var(--line)" stroke-width="1.5"/>
         <text x="170" y="151">AR. DROIT</text>
       </g>
@@ -307,18 +307,18 @@
 <div class="sheet" id="sheet">
   <div class="sheet-handle"></div>
   <h3 style="margin:0 0 4px;">Réglages</h3>
-  <p class="hint" style="margin-top:2px;">Stocké uniquement sur cet appareil. Pense à ajouter l'origine de ta page GitHub Pages (ex. https://tonpseudo.github.io) dans <code>cors_allowed_origins</code> côté Home Assistant.</p>
+  <p class="hint" style="margin-top:2px;">Ces identifiants sont sauvegardés <b>strictement en local</b> dans le navigateur de ton appareil (localStorage). Pense à ajouter l'URL GitHub Pages dans <code>cors_allowed_origins</code> côté Home Assistant.</p>
 
   <fieldset class="fieldset">
-    <legend>Connexion</legend>
+    <legend>Connexion Home Assistant</legend>
     <div class="field"><label>URL Home Assistant (Nabu Casa)</label><input id="cfgUrl" placeholder="https://xxxx.ui.nabu.casa"></div>
     <div class="field"><label>Token d'accès longue durée</label><input id="cfgToken" type="password" placeholder="ey…"></div>
     <button class="full-btn ghost" id="testConn" style="margin-bottom:4px;">Tester la connexion</button>
   </fieldset>
 
   <fieldset class="fieldset">
-    <legend>Prévision météo (aperçu uniquement)</legend>
-    <p class="hint" style="margin-top:0;">Sert seulement à afficher un aperçu dans l'app — l'automatisation réelle utilise weather.forecast_maison côté Home Assistant.</p>
+    <legend>Prévision météo (aperçu local)</legend>
+    <p class="hint" style="margin-top:0;">Sert à calculer l'aperçu dans la webapp — l'automatisation réelle utilise weather.forecast_maison dans HA.</p>
     <div class="field-row">
       <div class="field"><label>Latitude</label><input id="cfgLat" placeholder="48.85"></div>
       <div class="field"><label>Longitude</label><input id="cfgLon" placeholder="2.35"></div>
@@ -339,7 +339,7 @@
 <script>
 const $ = id => document.getElementById(id);
 
-/* entités préremplies avec celles de la Model Y */
+/* Mapping des entités Home Assistant */
 const ENT = {
   climate: 'climate.tesla_model_y_climatisation',
   status: 'binary_sensor.tesla_model_y_etat',
@@ -357,6 +357,7 @@ const ENT = {
   depDays: 'input_text.tesla_departure_days',
   statusMsg: 'input_text.tesla_precondition_status'
 };
+
 const SEATS = {
   'seat-avG': 'select.tesla_model_y_siege_chauffant_gauche',
   'seat-avD': 'select.tesla_model_y_siege_chauffant_droit',
@@ -364,6 +365,7 @@ const SEATS = {
   'seat-arC': 'select.tesla_model_y_siege_chauffant_arriere_central',
   'seat-arD': 'select.tesla_model_y_siege_chauffant_arriere_droit'
 };
+
 const SEAT_LEVELS = ['off','low','medium','high'];
 const SEAT_COLORS = { off:'var(--bg-raised)', low:'var(--amber-dim)', medium:'#5c3a15', high:'var(--amber)' };
 let seatState = {};
@@ -373,12 +375,18 @@ let logEntries = [];
 let climateTargetTemp = 21;
 let forecastCache = { ts:0, data:null };
 
-async function loadStore(key, fallback){
-  try{ const r = await window.storage.get(key); return r ? JSON.parse(r.value) : fallback; }
-  catch(e){ return fallback; }
+/* Fonctions de stockage local via localStorage */
+function loadStore(key, fallback){
+  try {
+    const val = localStorage.getItem(key);
+    return val ? JSON.parse(val) : fallback;
+  } catch(e) { return fallback; }
 }
-async function saveStore(key, val){
-  try{ await window.storage.set(key, JSON.stringify(val)); }catch(e){ console.error('storage', e); }
+
+function saveStore(key, val){
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+  } catch(e) { console.error('Erreur localStorage', e); }
 }
 
 let toastTimer;
@@ -386,6 +394,7 @@ function toast(msg){
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
 }
+
 function log(msg){
   const time = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   logEntries.unshift({time, msg});
@@ -393,15 +402,17 @@ function log(msg){
   renderLog();
   saveStore('activity-log', logEntries);
 }
+
 function renderLog(){
   const el = $('log');
-  if(!logEntries.length){ el.innerHTML = '<div class="log-empty">Aucune activité pour l\\'instant</div>'; return; }
+  if(!logEntries.length){ el.innerHTML = '<div class="log-empty">Aucune activité pour l\'instant</div>'; return; }
   el.innerHTML = logEntries.map(e => `<div class="log-item"><span class="t">${e.time}</span><span>${e.msg}</span></div>`).join('');
 }
 
+/* API REST Home Assistant */
 async function haFetch(path, opts={}){
   if(!cfg.baseUrl || !cfg.token) throw new Error('Configuration Home Assistant manquante');
-  const res = await fetch(cfg.baseUrl.replace(/\\/$/,'') + path, {
+  const res = await fetch(cfg.baseUrl.replace(/\/$/,'') + path, {
     ...opts,
     headers:{ 'Authorization':'Bearer '+cfg.token, 'Content-Type':'application/json', ...(opts.headers||{}) }
   });
@@ -409,14 +420,17 @@ async function haFetch(path, opts={}){
   const txt = await res.text();
   return txt ? JSON.parse(txt) : null;
 }
+
 async function getState(entityId){
   if(!entityId) return null;
   try{ return await haFetch('/api/states/'+encodeURIComponent(entityId)); }
   catch(e){ return null; }
 }
+
 async function callService(domain, service, data){
   return haFetch('/api/services/'+domain+'/'+service, { method:'POST', body: JSON.stringify(data) });
 }
+
 function isAwake(stateObj){
   if(!stateObj) return false;
   const list = (cfg.awakeStates || 'on').split(',').map(s=>s.trim().toLowerCase());
@@ -438,6 +452,7 @@ async function ensureAwake(){
   return false;
 }
 
+/* Calculs Météo et Préconditionnement */
 async function forecastTempAt(date){
   if(cfg.lat==null || cfg.lon==null) return null;
   const now = Date.now();
@@ -449,6 +464,7 @@ async function forecastTempAt(date){
     return readForecast(data, date);
   }catch(e){ return null; }
 }
+
 function readForecast(data, date){
   if(!data || !data.hourly) return null;
   const target = new Date(date); target.setMinutes(0,0,0);
@@ -456,16 +472,19 @@ function readForecast(data, date){
   const idx = data.hourly.time.indexOf(iso);
   return idx === -1 ? null : data.hourly.temperature_2m[idx];
 }
+
 async function estimateOutsideTemp(departureDate){
   const forecast = await forecastTempAt(departureDate || new Date());
   if(forecast != null) return { temp: forecast, source: 'météo prévue' };
   return { temp: 15, source: 'valeur par défaut' };
 }
+
 function leadMinutesFor(temp){
   if(temp <= 0 || temp >= 32) return 30;
   if(temp <= 5 || temp >= 28) return 20;
   return 15;
 }
+
 function targetFor(temp){
   const heat = parseFloat(cfg.comfortHeat)||21, cool = parseFloat(cfg.comfortCool)||20;
   if(temp <= 12) return { value: heat, mode:'chauffage' };
@@ -478,18 +497,30 @@ async function triggerPrecondition(reason, departureDate){
   const target = targetFor(est.temp);
   log('Lancement manuel : '+reason+' · '+target.value+'°C ('+est.source+')');
   try{
-    const scriptId = ENT.script.split('.')[1];
-    await callService('script', scriptId, { temperature: target.value, outside_temp: est.temp, reason: reason });
+    // Execution du script via l'API REST de Home Assistant
+    await callService('script', 'turn_on', {
+      entity_id: ENT.script,
+      variables: {
+        temperature: target.value,
+        outside_temp: est.temp,
+        reason: reason
+      }
+    });
     toast('Séquence lancée · '+target.value+'°C');
-  }catch(e){ log('⚠ Échec appel script : '+e.message); toast('Échec — vérifie les réglages'); }
+  }catch(e){ 
+    log('⚠ Échec appel script : '+e.message); 
+    toast('Échec — vérifie les réglages'); 
+  }
 }
 
+/* Gestion du Visuel de l'Habitacle */
 function paintSeat(id, level){
   const g = document.getElementById(id);
   if(!g) return;
   g.querySelector('rect').style.fill = SEAT_COLORS[level] || SEAT_COLORS.off;
   g.querySelector('rect').style.stroke = level==='off' ? 'var(--line)' : 'var(--amber)';
 }
+
 async function refreshSeats(){
   for(const [id, entity] of Object.entries(SEATS)){
     const s = await getState(entity);
@@ -497,6 +528,7 @@ async function refreshSeats(){
     seatState[id] = lvl; paintSeat(id, lvl);
   }
 }
+
 document.querySelectorAll('.seat').forEach(g=>{
   g.addEventListener('click', async ()=>{
     const id = g.id, entity = SEATS[id];
@@ -508,6 +540,7 @@ document.querySelectorAll('.seat').forEach(g=>{
   });
 });
 
+/* Rafraîchissement des états */
 async function refreshStatus(){
   if(!cfg.baseUrl || !cfg.token){
     $('statusText').textContent = 'à configurer'; $('statusDot').className = 'dot err';
@@ -568,9 +601,11 @@ async function loadDepartureFromHA(){
   }
   updateDepartureInfo();
 }
+
 function currentDaysArray(){
   return Array.from(document.querySelectorAll('.day.on')).map(el=>el.dataset.d);
 }
+
 async function updateDepartureInfo(){
   const days = currentDaysArray();
   if(!days.length){ $('depInfo').textContent = 'Sélectionne au moins un jour.'; return; }
@@ -589,6 +624,7 @@ async function updateDepartureInfo(){
   $('depInfo').innerHTML = `Prochain départ : <b>${fmt(next)}</b><br>Préchauffage estimé à <b>${fmt(trigger)}</b> (${lead} min avant, ${est.temp.toFixed(0)}°C ${est.source})<span class="tag">aperçu</span>`;
 }
 
+/* Panneau de Réglages */
 function openSheet(){
   $('cfgUrl').value = cfg.baseUrl||''; $('cfgToken').value = cfg.token||'';
   $('cfgLat').value = cfg.lat ?? ''; $('cfgLon').value = cfg.lon ?? '';
@@ -602,12 +638,13 @@ $('backdrop').onclick = closeSheet;
 
 $('testConn').onclick = async ()=>{
   const url = $('cfgUrl').value.trim(), token = $('cfgToken').value.trim();
-  if(!url||!token){ toast('Renseigne l\\'URL et le token'); return; }
+  if(!url||!token){ toast('Renseigne l\'URL et le token'); return; }
   try{
-    const res = await fetch(url.replace(/\\/$/,'')+'/api/', { headers:{ 'Authorization':'Bearer '+token } });
+    const res = await fetch(url.replace(/\/$/,'')+'/api/', { headers:{ 'Authorization':'Bearer '+token } });
     toast(res.ok ? 'Connexion réussie ✓' : 'Échec : HTTP '+res.status);
   }catch(e){ toast('Échec — vérifie CORS / HTTPS'); }
 };
+
 $('useGeo').onclick = ()=>{
   if(!navigator.geolocation){ toast('Géolocalisation indisponible'); return; }
   navigator.geolocation.getCurrentPosition(pos=>{
@@ -615,17 +652,19 @@ $('useGeo').onclick = ()=>{
     toast('Position récupérée');
   }, ()=> toast('Position refusée'));
 };
-$('saveSettings').onclick = async ()=>{
+
+$('saveSettings').onclick = ()=>{
   cfg = {
     baseUrl: $('cfgUrl').value.trim(), token: $('cfgToken').value.trim(), awakeStates:'on',
     comfortHeat: parseFloat($('comfortHeat').value)||21, comfortCool: parseFloat($('comfortCool').value)||20,
     lat: $('cfgLat').value ? parseFloat($('cfgLat').value) : null, lon: $('cfgLon').value ? parseFloat($('cfgLon').value) : null
   };
-  await saveStore('ha-config', cfg);
+  saveStore('ha-config', cfg);
   closeSheet(); toast('Réglages enregistrés');
   refreshStatus(); loadDepartureFromHA();
 };
 
+/* Événements commandes */
 $('lockBtn').onclick = async ()=>{
   const locked = $('lockBtn').classList.contains('on');
   try{
@@ -634,12 +673,14 @@ $('lockBtn').onclick = async ()=>{
     setTimeout(refreshStatus, 3000);
   }catch(e){ toast('Commande impossible — vérifie les réglages'); }
 };
+
 $('wakeBtn').onclick = async ()=>{
   toast('Réveil en cours…');
   const ok = await ensureAwake();
   toast(ok ? 'Voiture éveillée' : 'Pas de réponse');
   refreshStatus();
 };
+
 $('climateBtn').onclick = async ()=>{
   const on = $('climateBtn').classList.contains('on');
   try{
@@ -653,6 +694,7 @@ $('climateBtn').onclick = async ()=>{
     setTimeout(refreshStatus, 3000);
   }catch(e){ toast('Commande impossible — vérifie les réglages'); }
 };
+
 $('tempUp').onclick = ()=>{ climateTargetTemp = Math.min(28, climateTargetTemp+0.5); $('climateTemp').textContent = climateTargetTemp; };
 $('tempDown').onclick = ()=>{ climateTargetTemp = Math.max(16, climateTargetTemp-0.5); $('climateTemp').textContent = climateTargetTemp; };
 
@@ -661,6 +703,7 @@ $('defrostBtn').onclick = async ()=>{
   try{ await callService('switch', on?'turn_off':'turn_on', {entity_id: ENT.defrost}); setTimeout(refreshStatus,2000); }
   catch(e){ toast('Commande impossible'); }
 };
+
 $('wheelBtn').onclick = async ()=>{
   const on = $('wheelBtn').classList.contains('on');
   try{ await callService('switch', on?'turn_off':'turn_on', {entity_id: ENT.wheel}); setTimeout(refreshStatus,2000); }
@@ -675,12 +718,14 @@ $('depTime').onchange = async e=>{
   catch(err){ toast('Échec de mise à jour Home Assistant'); }
   updateDepartureInfo();
 };
+
 $('depToggle').onclick = async ()=>{
   const willEnable = !$('depToggle').classList.contains('on');
   $('depToggle').classList.toggle('on', willEnable);
   try{ await callService('input_boolean', willEnable ? 'turn_on':'turn_off', {entity_id:ENT.depAuto}); }
   catch(err){ toast('Échec de mise à jour Home Assistant'); }
 };
+
 document.querySelectorAll('.day').forEach(el=>{
   el.onclick = async ()=>{
     el.classList.toggle('on');
@@ -693,15 +738,16 @@ document.querySelectorAll('.day').forEach(el=>{
 
 function tickClock(){ $('clock').textContent = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
 
-(async function init(){
-  cfg = await loadStore('ha-config', cfg);
-  logEntries = await loadStore('activity-log', []);
+/* Initialisation */
+(function init(){
+  cfg = loadStore('ha-config', cfg);
+  logEntries = loadStore('activity-log', []);
   renderLog();
   tickClock(); setInterval(tickClock, 30000);
   refreshStatus(); loadDepartureFromHA();
   setInterval(refreshStatus, 45000);
   setInterval(updateDepartureInfo, 5*60000);
-  if(!cfg.baseUrl) setTimeout(openSheet, 400);
+  if(!cfg.baseUrl || !cfg.token) setTimeout(openSheet, 400);
 })();
 </script>
 </body>
