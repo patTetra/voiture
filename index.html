@@ -289,7 +289,8 @@
       <div class="day" data-d="6">S</div>
       <div class="day" data-d="7">D</div>
     </div>
-    <div class="dep-info" id="depInfo">Configurez un horaire — le calcul ci-dessous est un aperçu, l'automatisation tourne réellement dans Home Assistant.</div>
+    <div class="hint" style="margin:10px 2px 0;">Les jours ci-dessus ne servent qu'à l'aperçu local — l'armement est manuel et à usage unique : le toggle se désactive tout seul dès que le préchauffage est lancé (ou si l'heure est dépassée).</div>
+    <div class="dep-info" id="depInfo">Règle une heure de départ puis active le toggle pour armer.</div>
     <button class="full-btn primary" id="leaveNowBtn" style="margin-top:14px;">Je pars dans 30 min</button>
     <button class="full-btn ghost" id="testFlowBtn">Tester la séquence maintenant</button>
   </div>
@@ -618,21 +619,22 @@ function currentDaysArray(){
 }
 
 async function updateDepartureInfo(){
-  const days = currentDaysArray();
-  if(!days.length){ $('depInfo').textContent = 'Sélectionne au moins un jour.'; return; }
-  const [h,m] = $('depTime').value.split(':').map(Number);
-  const now = new Date(); let next = null;
-  for(let i=0;i<8;i++){
-    const d = new Date(now); d.setDate(now.getDate()+i); d.setHours(h,m,0,0);
-    const iso = ((d.getDay()+6)%7)+1;
-    if(days.includes(String(iso)) && d.getTime() > now.getTime() - 60000){ next = d; break; }
+  const armed = $('depToggle').classList.contains('on');
+  if(!armed){
+    $('depInfo').textContent = 'Règle une heure de départ puis active le toggle pour armer.';
+    return;
   }
-  if(!next){ $('depInfo').textContent = 'Aucun prochain départ trouvé.'; return; }
+  const [h,m] = $('depTime').value.split(':').map(Number);
+  const next = new Date(); next.setHours(h,m,0,0);
+  if(next.getTime() <= Date.now()){
+    $('depInfo').textContent = 'Heure déjà passée — l\'automatisation va se désarmer toute seule.';
+    return;
+  }
   const est = await estimateOutsideTemp(next);
   const lead = leadMinutesFor(est.temp);
   const trigger = new Date(next.getTime() - lead*60000);
-  const fmt = d => d.toLocaleString('fr-FR',{weekday:'short', hour:'2-digit', minute:'2-digit'});
-  $('depInfo').innerHTML = `Prochain départ : <b>${fmt(next)}</b><br>Préchauffage estimé à <b>${fmt(trigger)}</b> (${lead} min avant, ${est.temp.toFixed(0)}°C ${est.source})<span class="tag">aperçu</span>`;
+  const fmt = d => d.toLocaleString('fr-FR',{hour:'2-digit', minute:'2-digit'});
+  $('depInfo').innerHTML = `Armé pour <b>${fmt(next)}</b> aujourd'hui<br>Préchauffage estimé à <b>${fmt(trigger)}</b> (${lead} min avant, ${est.temp.toFixed(0)}°C ${est.source})<span class="tag">aperçu, se désarme après déclenchement</span>`;
 }
 
 function openSheet(){
@@ -755,18 +757,35 @@ $('depTime').onchange = async (e) => {
   }
 };
 
-// Interrupteur ON/OFF : met uniquement à jour l'input_boolean dans HA
+// Interrupteur ON/OFF = ARMEMENT manuel à usage unique.
+// ON : vérifie qu'une heure de départ future est réglée, puis arme dans HA.
+// L'automatisation HA se désarme elle-même une fois le préchauffage lancé (ou si l'heure est dépassée).
 $('depToggle').onclick = async () => {
   const willEnable = !$('depToggle').classList.contains('on');
+
+  if (willEnable) {
+    const val = $('depTime').value;
+    if (!val) { toast('Règle d\'abord une heure de départ'); return; }
+    const [h, m] = val.split(':').map(Number);
+    const dep = new Date(); dep.setHours(h, m, 0, 0);
+    if (dep.getTime() <= Date.now()) {
+      toast('Cette heure est déjà passée pour aujourd\'hui');
+      return;
+    }
+  }
+
   $('depToggle').classList.toggle('on', willEnable);
   try {
     await callService('input_boolean', willEnable ? 'turn_on' : 'turn_off', {
       entity_id: ENT.depAuto
     });
-    toast(willEnable ? 'Programmation activée' : 'Programmation désactivée');
+    log(willEnable ? 'Armé pour départ à ' + $('depTime').value : 'Désarmé manuellement');
+    toast(willEnable ? 'Armé ✓ — préchauffage automatique programmé' : 'Désarmé');
   } catch (err) {
+    $('depToggle').classList.toggle('on', !willEnable); // revert en cas d'échec
     toast('Échec de mise à jour Home Assistant');
   }
+  updateDepartureInfo();
 };
 
 // Jours de la semaine : met uniquement à jour l'input_text dans HA
