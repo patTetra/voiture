@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Model Y · Contrôle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0d1215;
+    --bg-raised: #141b1f;
+    --bg-card: #171f24;
+    --line: #232d33;
+    --text: #e9edee;
+    --text-dim: #8fa0a7;
+    --text-faint: #566269;
+    --ice: #5fd0e0;
+    --ice-dim: #1f3a3f;
+    --amber: #eda75b;
+    --amber-dim: #3a2c1a;
+    --red: #e6685f;
+    --green: #6fcf8f;
+    --radius-lg: 28px;
+    --radius-md: 18px;
+    --radius-sm: 12px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', -apple-system, sans-serif; overscroll-behavior-y: none;}
+  h1,h2,h3, .num, .btn, .pill{font-family:'Space Grotesk', 'IBM Plex Sans', sans-serif;}
+  .app{max-width:430px; margin:0 auto; padding: calc(var(--safe-top) + 14px) 18px calc(var(--safe-bottom) + 90px);
+    min-height:100vh; position:relative;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  .topbar .car-name{font-size:15px; font-weight:600; letter-spacing:.2px; color:var(--text);}
+  .topbar .clock{font-size:13px; color:var(--text-faint); font-variant-numeric: tabular-nums;}
+  .status-pill{display:inline-flex; align-items:center; gap:7px; padding:5px 11px 5px 8px;
+    border-radius:20px; background:var(--bg-raised); border:1px solid var(--line); font-size:12.5px; color:var(--text-dim);}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--text-faint); position:relative; flex:none;}
+  .dot.awake{background:var(--green); box-shadow:0 0 0 0 rgba(111,207,143,.5); animation:pulse 2s infinite;}
+  .dot.asleep{background:var(--text-faint);}
+  .dot.err{background:var(--red);}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(111,207,143,.45);}
+    70%{box-shadow:0 0 0 7px rgba(111,207,143,0);}
+    100%{box-shadow:0 0 0 0 rgba(111,207,143,0);}
+  }
+
+  .hero{background:linear-gradient(165deg, var(--bg-card), var(--bg-raised)); border:1px solid var(--line);
+    border-radius:var(--radius-lg); padding:22px 20px; margin-bottom:14px; position:relative; overflow:hidden;}
+  .hero-row{display:flex; align-items:center; justify-content:space-between; gap:16px;}
+  .battery-wrap{display:flex; align-items:center; gap:14px;}
+  .battery-ring{width:74px; height:74px; flex:none;}
+  .battery-num{font-size:15px; font-weight:600; fill:var(--text);}
+  .hero-meta .range{font-size:26px; font-weight:600; letter-spacing:-0.3px;}
+  .hero-meta .range small{font-size:13px; font-weight:500; color:var(--text-dim); margin-left:3px;}
+  .hero-meta .charge-state{font-size:12.5px; color:var(--text-faint); margin-top:2px;}
+  .temp-strip{display:flex; margin-top:18px; padding-top:16px; border-top:1px solid var(--line); gap:0;}
+  .temp-cell{flex:1; text-align:left;}
+  .temp-cell + .temp-cell{border-left:1px solid var(--line); padding-left:14px; margin-left:14px;}
+  .temp-cell .label{font-size:11px; color:var(--text-faint); text-transform:none;}
+  .temp-cell .val{font-size:19px; font-weight:600; margin-top:2px;}
+
+  .section-title{font-size:13px; font-weight:600; color:var(--text-dim); margin: 22px 2px 10px;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .ctrl-card{background:var(--bg-card); border:1px solid var(--line); border-radius:var(--radius-md);
+    padding:15px; display:flex; flex-direction:column; gap:10px; min-height:92px;}
+  .ctrl-top{display:flex; align-items:flex-start; justify-content:space-between;}
+  .ctrl-label{font-size:13px; color:var(--text-dim); font-weight:500;}
+  .ctrl-state{font-size:15.5px; font-weight:600; margin-top:auto;}
+  .icon-btn{width:34px; height:34px; border-radius:50%; border:none; background:var(--bg-raised); color:var(--text);
+    display:flex; align-items:center; justify-content:center; flex:none; transition:transform .12s ease, background .15s;}
+  .icon-btn:active{transform:scale(.9); background:var(--ice-dim);}
+  .icon-btn.on{background:var(--ice-dim); color:var(--ice);}
+  .icon-btn.amber.on{background:var(--amber-dim); color:var(--amber);}
+
+  .full-btn{width:100%; padding:13px; border-radius:var(--radius-sm); border:1px solid var(--line);
+    background:var(--bg-card); color:var(--text); font-size:14.5px; font-weight:600; text-align:center;
+    transition:transform .12s ease, background .15s; margin-top:2px;}
+  .full-btn:active{transform:scale(.97);}
+  .full-btn.primary{background:linear-gradient(135deg, var(--ice), #3aa9ba); color:#04262b; border:none;}
+  .full-btn.ghost{background:transparent; color:var(--text-dim);}
+  .full-btn:disabled{opacity:.45;}
+
+  .stepper{display:flex; align-items:center; justify-content:space-between; background:var(--bg-raised);
+    border-radius:var(--radius-sm); padding:8px 6px;}
+  .stepper button{width:36px; height:36px; border:none; border-radius:50%; background:transparent; color:var(--text);
+    font-size:19px; font-family:'Space Grotesk'; }
+  .stepper button:active{background:var(--line);}
+  .stepper .val{font-size:17px; font-weight:600; font-variant-numeric: tabular-nums;}
+
+  /* cabin visual */
+  .cabin-card{background:var(--bg-card); border:1px solid var(--line); border-radius:var(--radius-lg); padding:18px;}
+  .cabin-svg{display:block; margin:4px auto 8px;}
+  .seat{cursor:pointer;}
+  .seat rect{transition:fill .15s, stroke .15s;}
+  .seat text{font-family:'Space Grotesk'; font-size:9px; fill:var(--text-faint); text-anchor:middle; pointer-events:none;}
+  .cabin-legend{display:flex; justify-content:center; gap:14px; margin-top:6px; flex-wrap:wrap;}
+  .cabin-legend span{font-size:11px; color:var(--text-faint); display:flex; align-items:center; gap:5px;}
+  .cabin-legend i{width:9px; height:9px; border-radius:3px; display:inline-block;}
+  .cabin-extra{display:flex; gap:10px; margin-top:16px; padding-top:14px; border-top:1px solid var(--line);}
+  .cabin-extra .ctrl-card{flex:1; min-height:auto;}
+
+  .departure{background:var(--bg-card); border:1px solid var(--line); border-radius:var(--radius-lg); padding:18px;}
+  .dep-row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .time-input{background:var(--bg-raised); border:1px solid var(--line); border-radius:var(--radius-sm); color:var(--text);
+    font-family:'Space Grotesk'; font-size:24px; font-weight:600; padding:10px 14px; width:118px; text-align:center;}
+  .toggle{width:46px; height:27px; border-radius:20px; background:var(--bg-raised); border:1px solid var(--line);
+    position:relative; flex:none; transition:background .2s;}
+  .toggle::after{content:''; position:absolute; width:21px; height:21px; border-radius:50%; background:var(--text-faint);
+    top:2px; left:2px; transition:transform .2s, background .2s;}
+  .toggle.on{background:var(--ice-dim); border-color:var(--ice);}
+  .toggle.on::after{transform:translateX(19px); background:var(--ice);}
+  .days{display:flex; gap:6px; margin-top:14px;}
+  .day{flex:1; text-align:center; padding:8px 0; border-radius:10px; background:var(--bg-raised); border:1px solid var(--line);
+    font-size:12.5px; color:var(--text-faint); font-weight:600;}
+  .day.on{background:var(--ice-dim); color:var(--ice); border-color:var(--ice);}
+  .dep-info{margin-top:14px; padding:12px 14px; background:var(--bg-raised); border-radius:var(--radius-sm);
+    font-size:12.5px; color:var(--text-dim); line-height:1.5;}
+  .dep-info b{color:var(--text); font-weight:600;}
+  .dep-info .tag{display:inline-block; font-size:10.5px; color:var(--text-faint); border:1px solid var(--line);
+    border-radius:6px; padding:1px 6px; margin-left:6px;}
+  .status-line{background:var(--bg-card); border:1px solid var(--line); border-radius:var(--radius-md);
+    padding:13px 15px; font-size:13px; color:var(--text-dim); margin-bottom:14px; display:flex; gap:10px; align-items:flex-start;}
+  .status-line .ic{color:var(--ice); flex:none;}
+
+  .log{background:var(--bg-card); border:1px solid var(--line); border-radius:var(--radius-md); padding:6px 14px;}
+  .log-item{display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;}
+  .log-item:last-child{border-bottom:none;}
+  .log-item .t{color:var(--text-faint); font-variant-numeric: tabular-nums; flex:none; font-size:12px; padding-top:1px;}
+  .log-empty{color:var(--text-faint); font-size:13px; padding:16px 0; text-align:center;}
+
+  .sheet-backdrop{position:fixed; inset:0; background:rgba(6,9,10,.6); backdrop-filter: blur(2px);
+    opacity:0; pointer-events:none; transition:opacity .2s; z-index:20;}
+  .sheet-backdrop.open{opacity:1; pointer-events:auto;}
+  .sheet{position:fixed; left:0; right:0; bottom:0; max-width:430px; margin:0 auto; background:var(--bg-raised);
+    border-radius:26px 26px 0 0; border:1px solid var(--line); border-bottom:none; padding:18px 20px calc(var(--safe-bottom) + 24px);
+    transform:translateY(100%); transition:transform .28s cubic-bezier(.32,.72,0,1); z-index:21; max-height:85vh; overflow-y:auto;}
+  .sheet.open{transform:translateY(0);}
+  .sheet-handle{width:36px; height:4px; background:var(--line); border-radius:3px; margin:0 auto 14px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12px; color:var(--text-faint); margin-bottom:5px;}
+  .field input, .field select{width:100%; background:var(--bg-card); border:1px solid var(--line); border-radius:10px;
+    color:var(--text); font-size:14px; padding:10px 12px; font-family:'IBM Plex Sans';}
+  .field-row{display:flex; gap:10px;}
+  .field-row .field{flex:1;}
+  .fieldset{border:1px solid var(--line); border-radius:var(--radius-sm); padding:14px 14px 4px; margin-bottom:16px;}
+  .fieldset legend{font-size:12.5px; font-weight:600; color:var(--ice); padding:0 6px;}
+  .hint{font-size:11.5px; color:var(--text-faint); line-height:1.5; margin:8px 2px 16px;}
+  .tab-bar{position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:center; padding-bottom:var(--safe-bottom); z-index:15;}
+  .gear{width:50px; height:50px; border-radius:50%; background:var(--bg-card); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; margin-bottom:14px; box-shadow:0 6px 20px rgba(0,0,0,.35);}
+  .gear:active{transform:scale(.93);}
+  .toast{position:fixed; top:calc(var(--safe-top) + 10px); left:50%; transform:translateX(-50%) translateY(-140%);
+    background:var(--bg-card); border:1px solid var(--line); color:var(--text); font-size:13px; padding:10px 16px;
+    border-radius:14px; z-index:30; transition:transform .25s ease; max-width:88%; text-align:center;}
+  .toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <div class="topbar">
+    <div class="car-name">Model Y</div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="clock" id="clock">--:--</span>
+      <span class="status-pill"><span class="dot" id="statusDot"></span><span id="statusText">chargement…</span></span>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="hero-row">
+      <div class="battery-wrap">
+        <svg class="battery-ring" viewBox="0 0 74 74">
+          <circle cx="37" cy="37" r="31" fill="none" stroke="var(--line)" stroke-width="7"/>
+          <circle id="battRing" cx="37" cy="37" r="31" fill="none" stroke="var(--ice)" stroke-width="7"
+            stroke-linecap="round" stroke-dasharray="194.7" stroke-dashoffset="194.7" transform="rotate(-90 37 37)"/>
+          <text x="37" y="42" text-anchor="middle" class="battery-num" id="battNum">--</text>
+        </svg>
+        <div class="hero-meta">
+          <div class="range"><span id="rangeNum">--</span><small>km d'autonomie</small></div>
+          <div class="charge-state" id="chargeState">état inconnu</div>
+        </div>
+      </div>
+    </div>
+    <div class="temp-strip">
+      <div class="temp-cell">
+        <div class="label">Intérieur</div>
+        <div class="val" id="insideTemp">--°</div>
+      </div>
+      <div class="temp-cell">
+        <div class="label">Cible clim</div>
+        <div class="val" id="climateTargetShown">--°</div>
+      </div>
+      <div class="temp-cell">
+        <div class="label">Verrouillage</div>
+        <div class="val" id="lockState">--</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Commandes</div>
+  <div class="grid2">
+    <div class="ctrl-card">
+      <div class="ctrl-top">
+        <span class="ctrl-label">Verrous</span>
+        <button class="icon-btn" id="lockBtn" title="Verrouiller / déverrouiller">🔒</button>
+      </div>
+      <div class="ctrl-state" id="lockStateBig">--</div>
+    </div>
+    <div class="ctrl-card">
+      <div class="ctrl-top">
+        <span class="ctrl-label">Voiture</span>
+        <button class="icon-btn" id="wakeBtn" title="Réveiller">⟳</button>
+      </div>
+      <div class="ctrl-state" id="wakeStateBig">--</div>
+    </div>
+    <div class="ctrl-card" style="grid-column: span 2;">
+      <div class="ctrl-top">
+        <span class="ctrl-label">Climatisation</span>
+        <button class="icon-btn" id="climateBtn">❄︎</button>
+      </div>
+      <div class="stepper">
+        <button id="tempDown">–</button>
+        <span class="val"><span id="climateTemp">21</span>°C</span>
+        <button id="tempUp">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Habitacle</div>
+  <div class="cabin-card">
+    <svg class="cabin-svg" width="220" height="200" viewBox="0 0 220 200">
+      <rect x="18" y="8" width="184" height="184" rx="46" fill="none" stroke="var(--line)" stroke-width="2"/>
+      <rect x="70" y="0" width="80" height="20" rx="8" fill="var(--bg-raised)" stroke="var(--line)"/>
+      <g class="seat" id="seat-avG" data-e="select.tesla_model_y_siege_chauffant_gauche">
+        <rect x="34" y="34" width="60" height="60" rx="14" fill="var(--bg-raised)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="64" y="68">AV. GAUCHE</text>
+      </g>
+      <g class="seat" id="seat-avD" data-e="select.tesla_model_y_siege_chauffant_droit">
+        <rect x="126" y="34" width="60" height="60" rx="14" fill="var(--bg-raised)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="156" y="68">AV. DROIT</text>
+      </g>
+      <g class="seat" id="seat-arG" data-e="select.tesla_model_y_siege_chauffant_arriere_gauche">
+        <rect x="24" y="120" width="52" height="56" rx="13" fill="var(--bg-raised)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="50" y="151">AR. GAUCHE</text>
+      </g>
+      <g class="seat" id="seat-arC" data-e="select.tesla_model_y_siege_chauffant_arriere_central">
+        <rect x="84" y="128" width="52" height="48" rx="13" fill="var(--bg-raised)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="110" y="155">CENTRE</text>
+      </g>
+      <g class="seat" id="seat-arD" data-e="select.tesla_model_y_siege_chauffant_arriere_droit">
+        <rect x="144" y="120" width="52" height="56" rx="13" fill="var(--bg-raised)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="170" y="151">AR. DROIT</text>
+      </g>
+    </svg>
+    <div class="cabin-legend">
+      <span><i style="background:var(--bg-raised); border:1px solid var(--line);"></i>Éteint</span>
+      <span><i style="background:var(--amber-dim); border:1px solid var(--amber);"></i>Faible</span>
+      <span><i style="background:#5c3a15;"></i>Moyen</span>
+      <span><i style="background:var(--amber);"></i>Fort</span>
+    </div>
+    <div class="cabin-extra">
+      <div class="ctrl-card">
+        <div class="ctrl-top"><span class="ctrl-label">Dégivrage</span><button class="icon-btn amber" id="defrostBtn">❋</button></div>
+      </div>
+      <div class="ctrl-card">
+        <div class="ctrl-top"><span class="ctrl-label">Volant chauffant</span><button class="icon-btn amber" id="wheelBtn">◎</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Départ programmé</div>
+  <div class="status-line"><span class="ic">●</span><span id="autoStatusMsg">L'automatisation Home Assistant n'a pas encore tourné.</span></div>
+  <div class="departure">
+    <div class="dep-row">
+      <input type="time" class="time-input" id="depTime" value="08:00">
+      <div class="toggle" id="depToggle"></div>
+    </div>
+    <div class="days" id="days">
+      <div class="day" data-d="1">L</div>
+      <div class="day" data-d="2">M</div>
+      <div class="day" data-d="3">M</div>
+      <div class="day" data-d="4">J</div>
+      <div class="day" data-d="5">V</div>
+      <div class="day" data-d="6">S</div>
+      <div class="day" data-d="7">D</div>
+    </div>
+    <div class="dep-info" id="depInfo">Configurez un horaire — le calcul ci-dessous est un aperçu, l'automatisation tourne réellement dans Home Assistant.</div>
+    <button class="full-btn primary" id="leaveNowBtn" style="margin-top:14px;">Je pars dans 30 min</button>
+    <button class="full-btn ghost" id="testFlowBtn">Tester la séquence maintenant</button>
+  </div>
+
+  <div class="section-title">Journal (actions manuelles)</div>
+  <div class="log" id="log"><div class="log-empty">Aucune activité pour l'instant</div></div>
+
+  <div class="tab-bar">
+    <button class="gear" id="openSettings">⚙︎</button>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="backdrop"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <h3 style="margin:0 0 4px;">Réglages</h3>
+  <p class="hint" style="margin-top:2px;">Stocké uniquement sur cet appareil. Pense à ajouter l'origine de ta page GitHub Pages (ex. https://tonpseudo.github.io) dans <code>cors_allowed_origins</code> côté Home Assistant.</p>
+
+  <fieldset class="fieldset">
+    <legend>Connexion</legend>
+    <div class="field"><label>URL Home Assistant (Nabu Casa)</label><input id="cfgUrl" placeholder="https://xxxx.ui.nabu.casa"></div>
+    <div class="field"><label>Token d'accès longue durée</label><input id="cfgToken" type="password" placeholder="ey…"></div>
+    <button class="full-btn ghost" id="testConn" style="margin-bottom:4px;">Tester la connexion</button>
+  </fieldset>
+
+  <fieldset class="fieldset">
+    <legend>Prévision météo (aperçu uniquement)</legend>
+    <p class="hint" style="margin-top:0;">Sert seulement à afficher un aperçu dans l'app — l'automatisation réelle utilise weather.forecast_maison côté Home Assistant.</p>
+    <div class="field-row">
+      <div class="field"><label>Latitude</label><input id="cfgLat" placeholder="48.85"></div>
+      <div class="field"><label>Longitude</label><input id="cfgLon" placeholder="2.35"></div>
+    </div>
+    <button class="full-btn ghost" id="useGeo" style="margin-bottom:4px;">Utiliser ma position actuelle</button>
+    <div class="field-row">
+      <div class="field"><label>Confort chaud (°C)</label><input id="comfortHeat" placeholder="21"></div>
+      <div class="field"><label>Confort froid (°C)</label><input id="comfortCool" placeholder="20"></div>
+    </div>
+  </fieldset>
+
+  <button class="full-btn primary" id="saveSettings">Enregistrer</button>
+  <button class="full-btn ghost" id="closeSettings">Fermer</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+/* entités préremplies avec celles de la Model Y */
+const ENT = {
+  climate: 'climate.tesla_model_y_climatisation',
+  status: 'binary_sensor.tesla_model_y_etat',
+  wake: 'button.tesla_model_y_reveiller',
+  lock: 'lock.tesla_model_y_verrouillage',
+  battery: 'sensor.tesla_model_y_niveau_de_la_batterie',
+  range: 'sensor.tesla_model_y_autonomie',
+  charge: 'sensor.tesla_model_y_charge',
+  inside: 'sensor.tesla_model_y_temperature_interieure',
+  defrost: 'switch.tesla_model_y_degivrage',
+  wheel: 'switch.tesla_model_y_volant_chauffant',
+  script: 'script.tesla_precondition',
+  depAuto: 'input_boolean.tesla_departure_auto',
+  depTime: 'input_datetime.tesla_departure_time',
+  depDays: 'input_text.tesla_departure_days',
+  statusMsg: 'input_text.tesla_precondition_status'
+};
+const SEATS = {
+  'seat-avG': 'select.tesla_model_y_siege_chauffant_gauche',
+  'seat-avD': 'select.tesla_model_y_siege_chauffant_droit',
+  'seat-arG': 'select.tesla_model_y_siege_chauffant_arriere_gauche',
+  'seat-arC': 'select.tesla_model_y_siege_chauffant_arriere_central',
+  'seat-arD': 'select.tesla_model_y_siege_chauffant_arriere_droit'
+};
+const SEAT_LEVELS = ['off','low','medium','high'];
+const SEAT_COLORS = { off:'var(--bg-raised)', low:'var(--amber-dim)', medium:'#5c3a15', high:'var(--amber)' };
+let seatState = {};
+
+let cfg = { baseUrl:'', token:'', awakeStates:'on', comfortHeat:21, comfortCool:20, lat:null, lon:null };
+let logEntries = [];
+let climateTargetTemp = 21;
+let forecastCache = { ts:0, data:null };
+
+async function loadStore(key, fallback){
+  try{ const r = await window.storage.get(key); return r ? JSON.parse(r.value) : fallback; }
+  catch(e){ return fallback; }
+}
+async function saveStore(key, val){
+  try{ await window.storage.set(key, JSON.stringify(val)); }catch(e){ console.error('storage', e); }
+}
+
+let toastTimer;
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function log(msg){
+  const time = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  logEntries.unshift({time, msg});
+  logEntries = logEntries.slice(0,40);
+  renderLog();
+  saveStore('activity-log', logEntries);
+}
+function renderLog(){
+  const el = $('log');
+  if(!logEntries.length){ el.innerHTML = '<div class="log-empty">Aucune activité pour l\\'instant</div>'; return; }
+  el.innerHTML = logEntries.map(e => `<div class="log-item"><span class="t">${e.time}</span><span>${e.msg}</span></div>`).join('');
+}
+
+async function haFetch(path, opts={}){
+  if(!cfg.baseUrl || !cfg.token) throw new Error('Configuration Home Assistant manquante');
+  const res = await fetch(cfg.baseUrl.replace(/\\/$/,'') + path, {
+    ...opts,
+    headers:{ 'Authorization':'Bearer '+cfg.token, 'Content-Type':'application/json', ...(opts.headers||{}) }
+  });
+  if(!res.ok) throw new Error('HA '+res.status+' sur '+path);
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+async function getState(entityId){
+  if(!entityId) return null;
+  try{ return await haFetch('/api/states/'+encodeURIComponent(entityId)); }
+  catch(e){ return null; }
+}
+async function callService(domain, service, data){
+  return haFetch('/api/services/'+domain+'/'+service, { method:'POST', body: JSON.stringify(data) });
+}
+function isAwake(stateObj){
+  if(!stateObj) return false;
+  const list = (cfg.awakeStates || 'on').split(',').map(s=>s.trim().toLowerCase());
+  return list.includes(String(stateObj.state).toLowerCase());
+}
+
+async function ensureAwake(){
+  let s = await getState(ENT.status);
+  if(isAwake(s)) return true;
+  log('Réveil de la voiture…');
+  try{ await callService('button','press',{entity_id:ENT.wake}); }catch(e){}
+  const start = Date.now(), timeout = 90000, interval = 6000;
+  while(Date.now() - start < timeout){
+    await new Promise(r=>setTimeout(r, interval));
+    s = await getState(ENT.status);
+    if(isAwake(s)){ log('Voiture réveillée'); return true; }
+  }
+  log('⚠ La voiture ne répond pas après '+Math.round(timeout/1000)+'s');
+  return false;
+}
+
+async function forecastTempAt(date){
+  if(cfg.lat==null || cfg.lon==null) return null;
+  const now = Date.now();
+  if(forecastCache.data && now - forecastCache.ts < 20*60*1000) return readForecast(forecastCache.data, date);
+  try{
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${cfg.lat}&longitude=${cfg.lon}&hourly=temperature_2m&forecast_days=2&timezone=auto`;
+    const res = await fetch(url); const data = await res.json();
+    forecastCache = { ts: now, data };
+    return readForecast(data, date);
+  }catch(e){ return null; }
+}
+function readForecast(data, date){
+  if(!data || !data.hourly) return null;
+  const target = new Date(date); target.setMinutes(0,0,0);
+  const iso = target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0')+'-'+String(target.getDate()).padStart(2,'0')+'T'+String(target.getHours()).padStart(2,'0')+':00';
+  const idx = data.hourly.time.indexOf(iso);
+  return idx === -1 ? null : data.hourly.temperature_2m[idx];
+}
+async function estimateOutsideTemp(departureDate){
+  const forecast = await forecastTempAt(departureDate || new Date());
+  if(forecast != null) return { temp: forecast, source: 'météo prévue' };
+  return { temp: 15, source: 'valeur par défaut' };
+}
+function leadMinutesFor(temp){
+  if(temp <= 0 || temp >= 32) return 30;
+  if(temp <= 5 || temp >= 28) return 20;
+  return 15;
+}
+function targetFor(temp){
+  const heat = parseFloat(cfg.comfortHeat)||21, cool = parseFloat(cfg.comfortCool)||20;
+  if(temp <= 12) return { value: heat, mode:'chauffage' };
+  if(temp >= 24) return { value: cool, mode:'climatisation' };
+  return { value: Math.round((heat+cool)/2), mode:'ventilation' };
+}
+
+async function triggerPrecondition(reason, departureDate){
+  const est = await estimateOutsideTemp(departureDate);
+  const target = targetFor(est.temp);
+  log('Lancement manuel : '+reason+' · '+target.value+'°C ('+est.source+')');
+  try{
+    const scriptId = ENT.script.split('.')[1];
+    await callService('script', scriptId, { temperature: target.value, outside_temp: est.temp, reason: reason });
+    toast('Séquence lancée · '+target.value+'°C');
+  }catch(e){ log('⚠ Échec appel script : '+e.message); toast('Échec — vérifie les réglages'); }
+}
+
+function paintSeat(id, level){
+  const g = document.getElementById(id);
+  if(!g) return;
+  g.querySelector('rect').style.fill = SEAT_COLORS[level] || SEAT_COLORS.off;
+  g.querySelector('rect').style.stroke = level==='off' ? 'var(--line)' : 'var(--amber)';
+}
+async function refreshSeats(){
+  for(const [id, entity] of Object.entries(SEATS)){
+    const s = await getState(entity);
+    const lvl = s && SEAT_LEVELS.includes(s.state) ? s.state : 'off';
+    seatState[id] = lvl; paintSeat(id, lvl);
+  }
+}
+document.querySelectorAll('.seat').forEach(g=>{
+  g.addEventListener('click', async ()=>{
+    const id = g.id, entity = SEATS[id];
+    const cur = seatState[id] || 'off';
+    const next = SEAT_LEVELS[(SEAT_LEVELS.indexOf(cur)+1) % SEAT_LEVELS.length];
+    seatState[id] = next; paintSeat(id, next);
+    try{ await callService('select','select_option',{entity_id:entity, option:next}); }
+    catch(e){ toast('Commande impossible'); seatState[id] = cur; paintSeat(id, cur); }
+  });
+});
+
+async function refreshStatus(){
+  if(!cfg.baseUrl || !cfg.token){
+    $('statusText').textContent = 'à configurer'; $('statusDot').className = 'dot err';
+    return;
+  }
+  const [status, batt, range, inside, lockS, climate, charge, defrost, wheel, autoMsg] = await Promise.all([
+    getState(ENT.status), getState(ENT.battery), getState(ENT.range), getState(ENT.inside),
+    getState(ENT.lock), getState(ENT.climate), getState(ENT.charge),
+    getState(ENT.defrost), getState(ENT.wheel), getState(ENT.statusMsg)
+  ]);
+
+  const awake = isAwake(status);
+  $('statusDot').className = 'dot ' + (status ? (awake ? 'awake':'asleep') : 'err');
+  $('statusText').textContent = status ? (awake ? 'éveillée' : 'en veille') : 'inconnue';
+  $('wakeStateBig').textContent = status ? (awake ? 'Éveillée' : 'En veille') : '—';
+
+  if(batt && !isNaN(parseFloat(batt.state))){
+    const pct = Math.max(0, Math.min(100, parseFloat(batt.state)));
+    $('battNum').textContent = Math.round(pct)+'%';
+    const c = 194.7; $('battRing').setAttribute('stroke-dashoffset', c - (c*pct/100));
+  }
+  if(range && !isNaN(parseFloat(range.state))) $('rangeNum').textContent = Math.round(parseFloat(range.state));
+  if(inside && !isNaN(parseFloat(inside.state))) $('insideTemp').textContent = Math.round(parseFloat(inside.state))+'°';
+  if(charge && charge.state) $('chargeState').textContent = charge.state;
+  if(lockS){
+    const locked = String(lockS.state).toLowerCase().includes('lock') && !String(lockS.state).toLowerCase().includes('unlock');
+    $('lockState').textContent = locked ? 'Fermée' : 'Ouverte';
+    $('lockStateBig').textContent = locked ? 'Fermée' : 'Ouverte';
+    $('lockBtn').classList.toggle('on', locked);
+  }
+  if(climate){
+    const on = climate.state && climate.state !== 'off';
+    $('climateBtn').classList.toggle('on', on);
+    if(climate.attributes && climate.attributes.temperature){
+      climateTargetTemp = climate.attributes.temperature;
+      $('climateTemp').textContent = climateTargetTemp;
+      $('climateTargetShown').textContent = climateTargetTemp+'°';
+    }
+  }
+  if(defrost) $('defrostBtn').classList.toggle('on', defrost.state === 'on');
+  if(wheel) $('wheelBtn').classList.toggle('on', wheel.state === 'on');
+  if(autoMsg && autoMsg.state && autoMsg.state !== 'unknown'){
+    $('autoStatusMsg').textContent = autoMsg.state;
+  }
+  refreshSeats();
+}
+
+async function loadDepartureFromHA(){
+  if(!cfg.baseUrl || !cfg.token) return;
+  const [auto, time, days] = await Promise.all([
+    getState(ENT.depAuto), getState(ENT.depTime), getState(ENT.depDays)
+  ]);
+  if(auto){ $('depToggle').classList.toggle('on', auto.state === 'on'); }
+  if(time && time.state){ $('depTime').value = time.state.slice(0,5); }
+  if(days && days.state){
+    const list = days.state.split(',').map(s=>s.trim()).filter(Boolean);
+    document.querySelectorAll('.day').forEach(el => el.classList.toggle('on', list.includes(el.dataset.d)));
+  }
+  updateDepartureInfo();
+}
+function currentDaysArray(){
+  return Array.from(document.querySelectorAll('.day.on')).map(el=>el.dataset.d);
+}
+async function updateDepartureInfo(){
+  const days = currentDaysArray();
+  if(!days.length){ $('depInfo').textContent = 'Sélectionne au moins un jour.'; return; }
+  const [h,m] = $('depTime').value.split(':').map(Number);
+  const now = new Date(); let next = null;
+  for(let i=0;i<8;i++){
+    const d = new Date(now); d.setDate(now.getDate()+i); d.setHours(h,m,0,0);
+    const iso = ((d.getDay()+6)%7)+1;
+    if(days.includes(String(iso)) && d.getTime() > now.getTime() - 60000){ next = d; break; }
+  }
+  if(!next){ $('depInfo').textContent = 'Aucun prochain départ trouvé.'; return; }
+  const est = await estimateOutsideTemp(next);
+  const lead = leadMinutesFor(est.temp);
+  const trigger = new Date(next.getTime() - lead*60000);
+  const fmt = d => d.toLocaleString('fr-FR',{weekday:'short', hour:'2-digit', minute:'2-digit'});
+  $('depInfo').innerHTML = `Prochain départ : <b>${fmt(next)}</b><br>Préchauffage estimé à <b>${fmt(trigger)}</b> (${lead} min avant, ${est.temp.toFixed(0)}°C ${est.source})<span class="tag">aperçu</span>`;
+}
+
+function openSheet(){
+  $('cfgUrl').value = cfg.baseUrl||''; $('cfgToken').value = cfg.token||'';
+  $('cfgLat').value = cfg.lat ?? ''; $('cfgLon').value = cfg.lon ?? '';
+  $('comfortHeat').value = cfg.comfortHeat; $('comfortCool').value = cfg.comfortCool;
+  $('sheet').classList.add('open'); $('backdrop').classList.add('open');
+}
+function closeSheet(){ $('sheet').classList.remove('open'); $('backdrop').classList.remove('open'); }
+$('openSettings').onclick = openSheet;
+$('closeSettings').onclick = closeSheet;
+$('backdrop').onclick = closeSheet;
+
+$('testConn').onclick = async ()=>{
+  const url = $('cfgUrl').value.trim(), token = $('cfgToken').value.trim();
+  if(!url||!token){ toast('Renseigne l\\'URL et le token'); return; }
+  try{
+    const res = await fetch(url.replace(/\\/$/,'')+'/api/', { headers:{ 'Authorization':'Bearer '+token } });
+    toast(res.ok ? 'Connexion réussie ✓' : 'Échec : HTTP '+res.status);
+  }catch(e){ toast('Échec — vérifie CORS / HTTPS'); }
+};
+$('useGeo').onclick = ()=>{
+  if(!navigator.geolocation){ toast('Géolocalisation indisponible'); return; }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    $('cfgLat').value = pos.coords.latitude.toFixed(4); $('cfgLon').value = pos.coords.longitude.toFixed(4);
+    toast('Position récupérée');
+  }, ()=> toast('Position refusée'));
+};
+$('saveSettings').onclick = async ()=>{
+  cfg = {
+    baseUrl: $('cfgUrl').value.trim(), token: $('cfgToken').value.trim(), awakeStates:'on',
+    comfortHeat: parseFloat($('comfortHeat').value)||21, comfortCool: parseFloat($('comfortCool').value)||20,
+    lat: $('cfgLat').value ? parseFloat($('cfgLat').value) : null, lon: $('cfgLon').value ? parseFloat($('cfgLon').value) : null
+  };
+  await saveStore('ha-config', cfg);
+  closeSheet(); toast('Réglages enregistrés');
+  refreshStatus(); loadDepartureFromHA();
+};
+
+$('lockBtn').onclick = async ()=>{
+  const locked = $('lockBtn').classList.contains('on');
+  try{
+    await callService('lock', locked ? 'unlock' : 'lock', {entity_id: ENT.lock});
+    log(locked ? 'Déverrouillage envoyé' : 'Verrouillage envoyé');
+    setTimeout(refreshStatus, 3000);
+  }catch(e){ toast('Commande impossible — vérifie les réglages'); }
+};
+$('wakeBtn').onclick = async ()=>{
+  toast('Réveil en cours…');
+  const ok = await ensureAwake();
+  toast(ok ? 'Voiture éveillée' : 'Pas de réponse');
+  refreshStatus();
+};
+$('climateBtn').onclick = async ()=>{
+  const on = $('climateBtn').classList.contains('on');
+  try{
+    if(on){ await callService('climate','set_hvac_mode',{entity_id:ENT.climate, hvac_mode:'off'}); log('Climatisation coupée'); }
+    else{
+      await ensureAwake();
+      await callService('climate','set_temperature',{entity_id:ENT.climate, temperature: climateTargetTemp});
+      await callService('climate','set_hvac_mode',{entity_id:ENT.climate, hvac_mode:'heat_cool'});
+      log('Climatisation démarrée à '+climateTargetTemp+'°C');
+    }
+    setTimeout(refreshStatus, 3000);
+  }catch(e){ toast('Commande impossible — vérifie les réglages'); }
+};
+$('tempUp').onclick = ()=>{ climateTargetTemp = Math.min(28, climateTargetTemp+0.5); $('climateTemp').textContent = climateTargetTemp; };
+$('tempDown').onclick = ()=>{ climateTargetTemp = Math.max(16, climateTargetTemp-0.5); $('climateTemp').textContent = climateTargetTemp; };
+
+$('defrostBtn').onclick = async ()=>{
+  const on = $('defrostBtn').classList.contains('on');
+  try{ await callService('switch', on?'turn_off':'turn_on', {entity_id: ENT.defrost}); setTimeout(refreshStatus,2000); }
+  catch(e){ toast('Commande impossible'); }
+};
+$('wheelBtn').onclick = async ()=>{
+  const on = $('wheelBtn').classList.contains('on');
+  try{ await callService('switch', on?'turn_off':'turn_on', {entity_id: ENT.wheel}); setTimeout(refreshStatus,2000); }
+  catch(e){ toast('Commande impossible'); }
+};
+
+$('leaveNowBtn').onclick = ()=> triggerPrecondition('départ imminent (30 min)', new Date(Date.now()+30*60000));
+$('testFlowBtn').onclick = ()=> triggerPrecondition('test manuel', new Date());
+
+$('depTime').onchange = async e=>{
+  try{ await callService('input_datetime','set_datetime',{entity_id:ENT.depTime, time:e.target.value+':00'}); }
+  catch(err){ toast('Échec de mise à jour Home Assistant'); }
+  updateDepartureInfo();
+};
+$('depToggle').onclick = async ()=>{
+  const willEnable = !$('depToggle').classList.contains('on');
+  $('depToggle').classList.toggle('on', willEnable);
+  try{ await callService('input_boolean', willEnable ? 'turn_on':'turn_off', {entity_id:ENT.depAuto}); }
+  catch(err){ toast('Échec de mise à jour Home Assistant'); }
+};
+document.querySelectorAll('.day').forEach(el=>{
+  el.onclick = async ()=>{
+    el.classList.toggle('on');
+    const days = currentDaysArray();
+    try{ await callService('input_text','set_value',{entity_id:ENT.depDays, value: days.join(',')}); }
+    catch(err){ toast('Échec de mise à jour Home Assistant'); }
+    updateDepartureInfo();
+  };
+});
+
+function tickClock(){ $('clock').textContent = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+
+(async function init(){
+  cfg = await loadStore('ha-config', cfg);
+  logEntries = await loadStore('activity-log', []);
+  renderLog();
+  tickClock(); setInterval(tickClock, 30000);
+  refreshStatus(); loadDepartureFromHA();
+  setInterval(refreshStatus, 45000);
+  setInterval(updateDepartureInfo, 5*60000);
+  if(!cfg.baseUrl) setTimeout(openSheet, 400);
+})();
+</script>
+</body>
+</html>
