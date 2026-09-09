@@ -727,7 +727,7 @@ $('wheelBtn').onclick = async ()=>{
 };
 
 /* =========================================================
-   RÉGLAGES & DÉPART PROGRAMMÉ (CORRIGÉ)
+   RÉGLAGES & DÉPART PROGRAMMÉ
    ========================================================= */
 
 // Boutons d'action : lancent la séquence de préchauffage immédiatement
@@ -739,18 +739,20 @@ $('testFlowBtn').onclick = () => {
   triggerPrecondition('test manuel', new Date());
 };
 
-// Modification de l'heure : met uniquement à jour HA
+// Modification de l'heure : met SEULEMENT à jour l'input_datetime dans HA (sans déclencher le script)
 $('depTime').onchange = async (e) => {
+  const val = e.target.value;
+  if (!val) return;
   try {
     await callService('input_datetime', 'set_datetime', {
       entity_id: ENT.depTime,
-      time: e.target.value + ':00'
+      time: val + ':00'
     });
     toast('Heure enregistrée');
+    updateDepartureInfo();
   } catch (err) {
     toast('Échec de mise à jour Home Assistant');
   }
-  updateDepartureInfo();
 };
 
 // Interrupteur ON/OFF : met uniquement à jour l'input_boolean dans HA
