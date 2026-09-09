@@ -456,7 +456,7 @@ function updateLocationAuto(){
       cfg.lat = parseFloat(pos.coords.latitude.toFixed(4));
       cfg.lon = parseFloat(pos.coords.longitude.toFixed(4));
       saveStore('ha-config', cfg);
-      forecastCache = { ts:0, data:null }; // Réinitialise le cache météo pour la nouvelle position
+      forecastCache = { ts:0, data:null };
       updateDepartureInfo();
     }, () => {}, { enableHighAccuracy: true, timeout: 5000 });
   }
@@ -594,7 +594,6 @@ async function refreshStatus(){
   refreshSeats();
 }
 
-/* Récupération et calcul des jours (par défaut jour en cours) */
 async function loadDepartureFromHA(){
   if(!cfg.baseUrl || !cfg.token) return;
   const [auto, time, days] = await Promise.all([
@@ -607,7 +606,6 @@ async function loadDepartureFromHA(){
     const list = days.state.split(',').map(s=>s.trim()).filter(Boolean);
     document.querySelectorAll('.day').forEach(el => el.classList.toggle('on', list.includes(el.dataset.d)));
   } else {
-    // Par défaut : activer uniquement le jour en cours
     const todayISO = String(((new Date().getDay() + 6) % 7) + 1);
     document.querySelectorAll('.day').forEach(el => el.classList.toggle('on', el.dataset.d === todayISO));
     try{ await callService('input_text','set_value',{entity_id:ENT.depDays, value: todayISO}); }catch(e){}
@@ -676,7 +674,6 @@ $('saveSettings').onclick = ()=>{
   refreshStatus(); loadDepartureFromHA();
 };
 
-/* Action sur bouton Clim Manuelle : Envoi d'une notification directe lors d'un clic */
 $('climateBtn').onclick = async ()=>{
   const on = $('climateBtn').classList.contains('on');
   try{
@@ -689,7 +686,6 @@ $('climateBtn').onclick = async ()=>{
       await callService('climate','set_hvac_mode',{entity_id:ENT.climate, hvac_mode:'heat_cool'});
       log('Climatisation démarrée à '+climateTargetTemp+'°C');
       
-      // Notification directe sur l'iPhone
       await callService('notify', 'mobile_app_iphone_15_pro_de_patrick', {
         title: 'Tesla Model Y 🚗',
         message: 'Climatisation démarrée manuellement à ' + climateTargetTemp + '°C.'
@@ -730,28 +726,60 @@ $('wheelBtn').onclick = async ()=>{
   catch(e){ toast('Commande impossible'); }
 };
 
-$('leaveNowBtn').onclick = ()=> triggerPrecondition('départ imminent (30 min)', new Date(Date.now()+30*60000));
-$('testFlowBtn').onclick = ()=> triggerPrecondition('test manuel', new Date());
+/* =========================================================
+   RÉGLAGES & DÉPART PROGRAMMÉ (CORRIGÉ)
+   ========================================================= */
 
-$('depTime').onchange = async e=>{
-  try{ await callService('input_datetime','set_datetime',{entity_id:ENT.depTime, time:e.target.value+':00'}); }
-  catch(err){ toast('Échec de mise à jour Home Assistant'); }
+// Boutons d'action : lancent la séquence de préchauffage immédiatement
+$('leaveNowBtn').onclick = () => {
+  triggerPrecondition('départ imminent (30 min)', new Date(Date.now() + 30 * 60000));
+};
+
+$('testFlowBtn').onclick = () => {
+  triggerPrecondition('test manuel', new Date());
+};
+
+// Modification de l'heure : met uniquement à jour HA
+$('depTime').onchange = async (e) => {
+  try {
+    await callService('input_datetime', 'set_datetime', {
+      entity_id: ENT.depTime,
+      time: e.target.value + ':00'
+    });
+    toast('Heure enregistrée');
+  } catch (err) {
+    toast('Échec de mise à jour Home Assistant');
+  }
   updateDepartureInfo();
 };
 
-$('depToggle').onclick = async ()=>{
+// Interrupteur ON/OFF : met uniquement à jour l'input_boolean dans HA
+$('depToggle').onclick = async () => {
   const willEnable = !$('depToggle').classList.contains('on');
   $('depToggle').classList.toggle('on', willEnable);
-  try{ await callService('input_boolean', willEnable ? 'turn_on':'turn_off', {entity_id:ENT.depAuto}); }
-  catch(err){ toast('Échec de mise à jour Home Assistant'); }
+  try {
+    await callService('input_boolean', willEnable ? 'turn_on' : 'turn_off', {
+      entity_id: ENT.depAuto
+    });
+    toast(willEnable ? 'Programmation activée' : 'Programmation désactivée');
+  } catch (err) {
+    toast('Échec de mise à jour Home Assistant');
+  }
 };
 
-document.querySelectorAll('.day').forEach(el=>{
-  el.onclick = async ()=>{
+// Jours de la semaine : met uniquement à jour l'input_text dans HA
+document.querySelectorAll('.day').forEach(el => {
+  el.onclick = async () => {
     el.classList.toggle('on');
     const days = currentDaysArray();
-    try{ await callService('input_text','set_value',{entity_id:ENT.depDays, value: days.join(',')}); }
-    catch(err){ toast('Échec de mise à jour Home Assistant'); }
+    try {
+      await callService('input_text', 'set_value', {
+        entity_id: ENT.depDays,
+        value: days.join(',')
+      });
+    } catch (err) {
+      toast('Échec de mise à jour Home Assistant');
+    }
     updateDepartureInfo();
   };
 });
@@ -763,7 +791,7 @@ function tickClock(){ $('clock').textContent = new Date().toLocaleTimeString('fr
   logEntries = loadStore('activity-log', []);
   renderLog();
   tickClock(); setInterval(tickClock, 30000);
-  updateLocationAuto(); // Mise à jour automatique de la localisation
+  updateLocationAuto();
   refreshStatus(); loadDepartureFromHA();
   setInterval(refreshStatus, 45000);
   setInterval(updateDepartureInfo, 5*60000);
