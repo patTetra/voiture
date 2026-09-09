@@ -164,7 +164,7 @@
 <div class="app" id="app">
 
   <div class="topbar">
-    <div class="car-name">Model rY</div>
+    <div class="car-name">Model Y</div>
     <div style="display:flex; align-items:center; gap:10px;">
       <span class="clock" id="clock">--:--</span>
       <span class="status-pill"><span class="dot" id="statusDot"></span><span id="statusText">chargement…</span></span>
@@ -278,20 +278,11 @@
   <div class="departure">
     <div class="dep-row">
       <input type="time" class="time-input" id="depTime" value="08:00">
-      <div class="toggle" id="depToggle"></div>
     </div>
-    <div class="days" id="days">
-      <div class="day" data-d="1">L</div>
-      <div class="day" data-d="2">M</div>
-      <div class="day" data-d="3">M</div>
-      <div class="day" data-d="4">J</div>
-      <div class="day" data-d="5">V</div>
-      <div class="day" data-d="6">S</div>
-      <div class="day" data-d="7">D</div>
-    </div>
-    <div class="hint" style="margin:10px 2px 0;">Les jours ci-dessus ne servent qu'à l'aperçu local — l'armement est manuel et à usage unique : le toggle se désactive tout seul dès que le préchauffage est lancé (ou si l'heure est dépassée).</div>
-    <div class="dep-info" id="depInfo">Règle une heure de départ puis active le toggle pour armer.</div>
-    <button class="full-btn primary" id="leaveNowBtn" style="margin-top:14px;">Je pars dans 30 min</button>
+    <div class="dep-info" id="depInfo">Règle une heure de départ puis appuie sur « Lancer le compte à rebours ».</div>
+    <button class="full-btn primary" id="armBtn" style="margin-top:14px;">🚀 Lancer le compte à rebours</button>
+    <button class="full-btn ghost" id="disarmBtn" style="display:none;">Désarmer</button>
+    <button class="full-btn ghost" id="leaveNowBtn">Je pars dans 30 min</button>
     <button class="full-btn ghost" id="testFlowBtn">Tester la séquence maintenant</button>
   </div>
 
@@ -597,31 +588,24 @@ async function refreshStatus(){
 
 async function loadDepartureFromHA(){
   if(!cfg.baseUrl || !cfg.token) return;
-  const [auto, time, days] = await Promise.all([
-    getState(ENT.depAuto), getState(ENT.depTime), getState(ENT.depDays)
+  const [auto, time] = await Promise.all([
+    getState(ENT.depAuto), getState(ENT.depTime)
   ]);
-  if(auto){ $('depToggle').classList.toggle('on', auto.state === 'on'); }
+  setArmedUI(auto && auto.state === 'on');
   if(time && time.state){ $('depTime').value = time.state.slice(0,5); }
-  
-  if(days && days.state && days.state.trim() !== ''){
-    const list = days.state.split(',').map(s=>s.trim()).filter(Boolean);
-    document.querySelectorAll('.day').forEach(el => el.classList.toggle('on', list.includes(el.dataset.d)));
-  } else {
-    const todayISO = String(((new Date().getDay() + 6) % 7) + 1);
-    document.querySelectorAll('.day').forEach(el => el.classList.toggle('on', el.dataset.d === todayISO));
-    try{ await callService('input_text','set_value',{entity_id:ENT.depDays, value: todayISO}); }catch(e){}
-  }
   updateDepartureInfo();
 }
 
-function currentDaysArray(){
-  return Array.from(document.querySelectorAll('.day.on')).map(el=>el.dataset.d);
+function setArmedUI(armed){
+  $('armBtn').style.display = armed ? 'none' : '';
+  $('disarmBtn').style.display = armed ? '' : 'none';
+  $('depTime').disabled = armed;
 }
 
 async function updateDepartureInfo(){
-  const armed = $('depToggle').classList.contains('on');
+  const armed = $('disarmBtn').style.display !== 'none';
   if(!armed){
-    $('depInfo').textContent = 'Règle une heure de départ puis active le toggle pour armer.';
+    $('depInfo').textContent = 'Règle une heure de départ puis appuie sur « Lancer le compte à rebours ».';
     return;
   }
   const [h,m] = $('depTime').value.split(':').map(Number);
@@ -636,6 +620,7 @@ async function updateDepartureInfo(){
   const fmt = d => d.toLocaleString('fr-FR',{hour:'2-digit', minute:'2-digit'});
   $('depInfo').innerHTML = `Armé pour <b>${fmt(next)}</b> aujourd'hui<br>Préchauffage estimé à <b>${fmt(trigger)}</b> (${lead} min avant, ${est.temp.toFixed(0)}°C ${est.source})<span class="tag">aperçu, se désarme après déclenchement</span>`;
 }
+
 
 function openSheet(){
   $('cfgUrl').value = cfg.baseUrl||''; $('cfgToken').value = cfg.token||'';
@@ -757,53 +742,42 @@ $('depTime').onchange = async (e) => {
   }
 };
 
-// Interrupteur ON/OFF = ARMEMENT manuel à usage unique.
-// ON : vérifie qu'une heure de départ future est réglée, puis arme dans HA.
+// Bouton "Lancer le compte à rebours" = ARMEMENT manuel à usage unique.
+// Vérifie qu'une heure de départ future est réglée, puis arme dans HA.
 // L'automatisation HA se désarme elle-même une fois le préchauffage lancé (ou si l'heure est dépassée).
-$('depToggle').onclick = async () => {
-  const willEnable = !$('depToggle').classList.contains('on');
-
-  if (willEnable) {
-    const val = $('depTime').value;
-    if (!val) { toast('Règle d\'abord une heure de départ'); return; }
-    const [h, m] = val.split(':').map(Number);
-    const dep = new Date(); dep.setHours(h, m, 0, 0);
-    if (dep.getTime() <= Date.now()) {
-      toast('Cette heure est déjà passée pour aujourd\'hui');
-      return;
-    }
+$('armBtn').onclick = async () => {
+  const val = $('depTime').value;
+  if (!val) { toast('Règle d\'abord une heure de départ'); return; }
+  const [h, m] = val.split(':').map(Number);
+  const dep = new Date(); dep.setHours(h, m, 0, 0);
+  if (dep.getTime() <= Date.now()) {
+    toast('Cette heure est déjà passée pour aujourd\'hui');
+    return;
   }
 
-  $('depToggle').classList.toggle('on', willEnable);
   try {
-    await callService('input_boolean', willEnable ? 'turn_on' : 'turn_off', {
-      entity_id: ENT.depAuto
-    });
-    log(willEnable ? 'Armé pour départ à ' + $('depTime').value : 'Désarmé manuellement');
-    toast(willEnable ? 'Armé ✓ — préchauffage automatique programmé' : 'Désarmé');
+    await callService('input_datetime', 'set_datetime', { entity_id: ENT.depTime, time: val + ':00' });
+    await callService('input_boolean', 'turn_on', { entity_id: ENT.depAuto });
+    setArmedUI(true);
+    log('Armé pour départ à ' + val);
+    toast('Armé ✓ — préchauffage automatique programmé');
+    updateDepartureInfo();
   } catch (err) {
-    $('depToggle').classList.toggle('on', !willEnable); // revert en cas d'échec
     toast('Échec de mise à jour Home Assistant');
   }
-  updateDepartureInfo();
 };
 
-// Jours de la semaine : met uniquement à jour l'input_text dans HA
-document.querySelectorAll('.day').forEach(el => {
-  el.onclick = async () => {
-    el.classList.toggle('on');
-    const days = currentDaysArray();
-    try {
-      await callService('input_text', 'set_value', {
-        entity_id: ENT.depDays,
-        value: days.join(',')
-      });
-    } catch (err) {
-      toast('Échec de mise à jour Home Assistant');
-    }
+$('disarmBtn').onclick = async () => {
+  try {
+    await callService('input_boolean', 'turn_off', { entity_id: ENT.depAuto });
+    setArmedUI(false);
+    log('Désarmé manuellement');
+    toast('Désarmé');
     updateDepartureInfo();
-  };
-});
+  } catch (err) {
+    toast('Échec de mise à jour Home Assistant');
+  }
+};
 
 function tickClock(){ $('clock').textContent = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
 
