@@ -93,7 +93,6 @@
   .stepper button:active{background:var(--line);}
   .stepper .val{font-size:17px; font-weight:600; font-variant-numeric: tabular-nums;}
 
-  /* cabin visual */
   .cabin-card{background:var(--bg-card); border:1px solid var(--line); border-radius:var(--radius-lg); padding:18px;}
   .cabin-svg{display:block; margin:4px auto 8px;}
   .seat{cursor:pointer;}
@@ -307,7 +306,7 @@
 <div class="sheet" id="sheet">
   <div class="sheet-handle"></div>
   <h3 style="margin:0 0 4px;">Réglages</h3>
-  <p class="hint" style="margin-top:2px;">Ces identifiants sont sauvegardés <b>strictement en local</b> dans le navigateur de ton appareil (localStorage). Pense à ajouter l'URL GitHub Pages dans <code>cors_allowed_origins</code> côté Home Assistant.</p>
+  <p class="hint" style="margin-top:2px;">Ces identifiants sont sauvegardés <b>strictement en local</b> dans le navigateur de ton appareil (localStorage).</p>
 
   <fieldset class="fieldset">
     <legend>Connexion Home Assistant</legend>
@@ -318,12 +317,12 @@
 
   <fieldset class="fieldset">
     <legend>Prévision météo (aperçu local)</legend>
-    <p class="hint" style="margin-top:0;">Sert à calculer l'aperçu dans la webapp — l'automatisation réelle utilise weather.forecast_maison dans HA.</p>
+    <p class="hint" style="margin-top:0;">Mise à jour automatique à chaque ouverture de l'application.</p>
     <div class="field-row">
       <div class="field"><label>Latitude</label><input id="cfgLat" placeholder="48.85"></div>
       <div class="field"><label>Longitude</label><input id="cfgLon" placeholder="2.35"></div>
     </div>
-    <button class="full-btn ghost" id="useGeo" style="margin-bottom:4px;">Utiliser ma position actuelle</button>
+    <button class="full-btn ghost" id="useGeo" style="margin-bottom:4px;">Forcer la géolocalisation</button>
     <div class="field-row">
       <div class="field"><label>Confort chaud (°C)</label><input id="comfortHeat" placeholder="21"></div>
       <div class="field"><label>Confort froid (°C)</label><input id="comfortCool" placeholder="20"></div>
@@ -339,7 +338,6 @@
 <script>
 const $ = id => document.getElementById(id);
 
-/* Mapping des entités Home Assistant */
 const ENT = {
   climate: 'climate.tesla_model_y_climatisation',
   status: 'binary_sensor.tesla_model_y_etat',
@@ -355,7 +353,8 @@ const ENT = {
   depAuto: 'input_boolean.tesla_departure_auto',
   depTime: 'input_datetime.tesla_departure_time',
   depDays: 'input_text.tesla_departure_days',
-  statusMsg: 'input_text.tesla_precondition_status'
+  statusMsg: 'input_text.tesla_precondition_status',
+  notify: 'notify.mobile_app_iphone_15_pro_de_patrick'
 };
 
 const SEATS = {
@@ -375,7 +374,6 @@ let logEntries = [];
 let climateTargetTemp = 21;
 let forecastCache = { ts:0, data:null };
 
-/* Fonctions de stockage local via localStorage */
 function loadStore(key, fallback){
   try {
     const val = localStorage.getItem(key);
@@ -409,7 +407,6 @@ function renderLog(){
   el.innerHTML = logEntries.map(e => `<div class="log-item"><span class="t">${e.time}</span><span>${e.msg}</span></div>`).join('');
 }
 
-/* API REST Home Assistant */
 async function haFetch(path, opts={}){
   if(!cfg.baseUrl || !cfg.token) throw new Error('Configuration Home Assistant manquante');
   const res = await fetch(cfg.baseUrl.replace(/\/$/,'') + path, {
@@ -452,7 +449,19 @@ async function ensureAwake(){
   return false;
 }
 
-/* Calculs Météo et Préconditionnement */
+/* Géolocalisation automatique au lancement */
+function updateLocationAuto(){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos => {
+      cfg.lat = parseFloat(pos.coords.latitude.toFixed(4));
+      cfg.lon = parseFloat(pos.coords.longitude.toFixed(4));
+      saveStore('ha-config', cfg);
+      forecastCache = { ts:0, data:null }; // Réinitialise le cache météo pour la nouvelle position
+      updateDepartureInfo();
+    }, () => {}, { enableHighAccuracy: true, timeout: 5000 });
+  }
+}
+
 async function forecastTempAt(date){
   if(cfg.lat==null || cfg.lon==null) return null;
   const now = Date.now();
@@ -497,7 +506,6 @@ async function triggerPrecondition(reason, departureDate){
   const target = targetFor(est.temp);
   log('Lancement manuel : '+reason+' · '+target.value+'°C ('+est.source+')');
   try{
-    // Execution du script via l'API REST de Home Assistant
     await callService('script', 'turn_on', {
       entity_id: ENT.script,
       variables: {
@@ -513,7 +521,6 @@ async function triggerPrecondition(reason, departureDate){
   }
 }
 
-/* Gestion du Visuel de l'Habitacle */
 function paintSeat(id, level){
   const g = document.getElementById(id);
   if(!g) return;
@@ -540,7 +547,6 @@ document.querySelectorAll('.seat').forEach(g=>{
   });
 });
 
-/* Rafraîchissement des états */
 async function refreshStatus(){
   if(!cfg.baseUrl || !cfg.token){
     $('statusText').textContent = 'à configurer'; $('statusDot').className = 'dot err';
@@ -588,6 +594,7 @@ async function refreshStatus(){
   refreshSeats();
 }
 
+/* Récupération et calcul des jours (par défaut jour en cours) */
 async function loadDepartureFromHA(){
   if(!cfg.baseUrl || !cfg.token) return;
   const [auto, time, days] = await Promise.all([
@@ -595,9 +602,15 @@ async function loadDepartureFromHA(){
   ]);
   if(auto){ $('depToggle').classList.toggle('on', auto.state === 'on'); }
   if(time && time.state){ $('depTime').value = time.state.slice(0,5); }
-  if(days && days.state){
+  
+  if(days && days.state && days.state.trim() !== ''){
     const list = days.state.split(',').map(s=>s.trim()).filter(Boolean);
     document.querySelectorAll('.day').forEach(el => el.classList.toggle('on', list.includes(el.dataset.d)));
+  } else {
+    // Par défaut : activer uniquement le jour en cours
+    const todayISO = String(((new Date().getDay() + 6) % 7) + 1);
+    document.querySelectorAll('.day').forEach(el => el.classList.toggle('on', el.dataset.d === todayISO));
+    try{ await callService('input_text','set_value',{entity_id:ENT.depDays, value: todayISO}); }catch(e){}
   }
   updateDepartureInfo();
 }
@@ -624,7 +637,6 @@ async function updateDepartureInfo(){
   $('depInfo').innerHTML = `Prochain départ : <b>${fmt(next)}</b><br>Préchauffage estimé à <b>${fmt(trigger)}</b> (${lead} min avant, ${est.temp.toFixed(0)}°C ${est.source})<span class="tag">aperçu</span>`;
 }
 
-/* Panneau de Réglages */
 function openSheet(){
   $('cfgUrl').value = cfg.baseUrl||''; $('cfgToken').value = cfg.token||'';
   $('cfgLat').value = cfg.lat ?? ''; $('cfgLon').value = cfg.lon ?? '';
@@ -664,7 +676,29 @@ $('saveSettings').onclick = ()=>{
   refreshStatus(); loadDepartureFromHA();
 };
 
-/* Événements commandes */
+/* Action sur bouton Clim Manuelle : Envoi d'une notification directe lors d'un clic */
+$('climateBtn').onclick = async ()=>{
+  const on = $('climateBtn').classList.contains('on');
+  try{
+    if(on){ 
+      await callService('climate','set_hvac_mode',{entity_id:ENT.climate, hvac_mode:'off'}); 
+      log('Climatisation coupée'); 
+    } else {
+      await ensureAwake();
+      await callService('climate','set_temperature',{entity_id:ENT.climate, temperature: climateTargetTemp});
+      await callService('climate','set_hvac_mode',{entity_id:ENT.climate, hvac_mode:'heat_cool'});
+      log('Climatisation démarrée à '+climateTargetTemp+'°C');
+      
+      // Notification directe sur l'iPhone
+      await callService('notify', 'mobile_app_iphone_15_pro_de_patrick', {
+        title: 'Tesla Model Y 🚗',
+        message: 'Climatisation démarrée manuellement à ' + climateTargetTemp + '°C.'
+      });
+    }
+    setTimeout(refreshStatus, 3000);
+  }catch(e){ toast('Commande impossible — vérifie les réglages'); }
+};
+
 $('lockBtn').onclick = async ()=>{
   const locked = $('lockBtn').classList.contains('on');
   try{
@@ -679,20 +713,6 @@ $('wakeBtn').onclick = async ()=>{
   const ok = await ensureAwake();
   toast(ok ? 'Voiture éveillée' : 'Pas de réponse');
   refreshStatus();
-};
-
-$('climateBtn').onclick = async ()=>{
-  const on = $('climateBtn').classList.contains('on');
-  try{
-    if(on){ await callService('climate','set_hvac_mode',{entity_id:ENT.climate, hvac_mode:'off'}); log('Climatisation coupée'); }
-    else{
-      await ensureAwake();
-      await callService('climate','set_temperature',{entity_id:ENT.climate, temperature: climateTargetTemp});
-      await callService('climate','set_hvac_mode',{entity_id:ENT.climate, hvac_mode:'heat_cool'});
-      log('Climatisation démarrée à '+climateTargetTemp+'°C');
-    }
-    setTimeout(refreshStatus, 3000);
-  }catch(e){ toast('Commande impossible — vérifie les réglages'); }
 };
 
 $('tempUp').onclick = ()=>{ climateTargetTemp = Math.min(28, climateTargetTemp+0.5); $('climateTemp').textContent = climateTargetTemp; };
@@ -738,12 +758,12 @@ document.querySelectorAll('.day').forEach(el=>{
 
 function tickClock(){ $('clock').textContent = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
 
-/* Initialisation */
 (function init(){
   cfg = loadStore('ha-config', cfg);
   logEntries = loadStore('activity-log', []);
   renderLog();
   tickClock(); setInterval(tickClock, 30000);
+  updateLocationAuto(); // Mise à jour automatique de la localisation
   refreshStatus(); loadDepartureFromHA();
   setInterval(refreshStatus, 45000);
   setInterval(updateDepartureInfo, 5*60000);
