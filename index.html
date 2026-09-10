@@ -544,11 +544,12 @@ async function refreshStatus(){
     $('statusText').textContent = 'à configurer'; $('statusDot').className = 'dot err';
     return;
   }
-  const [status, batt, range, inside, lockS, climate, charge, defrost, wheel, autoMsg] = await Promise.all([
+  const [status, batt, range, inside, lockS, climate, charge, defrost, wheel, autoMsg, depAuto] = await Promise.all([
     getState(ENT.status), getState(ENT.battery), getState(ENT.range), getState(ENT.inside),
     getState(ENT.lock), getState(ENT.climate), getState(ENT.charge),
-    getState(ENT.defrost), getState(ENT.wheel), getState(ENT.statusMsg)
+    getState(ENT.defrost), getState(ENT.wheel), getState(ENT.statusMsg), getState(ENT.depAuto)
   ]);
+  if(depAuto) setArmedUI(depAuto.state === 'on');
 
   const awake = isAwake(status);
   $('statusDot').className = 'dot ' + (status ? (awake ? 'awake':'asleep') : 'err');
