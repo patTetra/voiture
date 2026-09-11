@@ -8,19 +8,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #0d1215;
-    --bg-raised: #141b1f;
-    --bg-card: #171f24;
-    --line: #232d33;
-    --text: #e9edee;
-    --text-dim: #8fa0a7;
-    --text-faint: #566269;
-    --ice: #5fd0e0;
-    --ice-dim: #1f3a3f;
-    --amber: #eda75b;
-    --amber-dim: #3a2c1a;
-    --red: #e6685f;
-    --green: #6fcf8f;
+    --bg: #06090b;
+    --bg-raised: #10161a;
+    --bg-card: #131a1f;
+    --line: #2c3a43;
+    --text: #f6f9fa;
+    --text-dim: #aebec4;
+    --text-faint: #74868e;
+    --ice: #3fe0ff;
+    --ice-2: #7c5cff;
+    --ice-dim: #123239;
+    --ice-glow: rgba(63,224,255,.38);
+    --amber: #ffb268;
+    --amber-dim: #3d2c18;
+    --red: #ff6b62;
+    --green: #57e39a;
     --radius-lg: 28px;
     --radius-md: 18px;
     --radius-sm: 12px;
@@ -28,8 +30,9 @@
     --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
-  html,body{margin:0; padding:0; background:var(--bg); color:var(--text);
-    font-family:'IBM Plex Sans', -apple-system, sans-serif; overscroll-behavior-y: none;}
+  html,body{margin:0; padding:0; background:
+    radial-gradient(ellipse 900px 460px at 50% -8%, rgba(63,224,255,.10), transparent 62%), var(--bg);
+    color:var(--text); font-family:'IBM Plex Sans', -apple-system, sans-serif; overscroll-behavior-y: none;}
   h1,h2,h3, .num, .btn, .pill{font-family:'Space Grotesk', 'IBM Plex Sans', sans-serif;}
   .app{max-width:430px; margin:0 auto; padding: calc(var(--safe-top) + 14px) 18px calc(var(--safe-bottom) + 90px);
     min-height:100vh; position:relative;}
@@ -51,6 +54,8 @@
 
   .hero{background:linear-gradient(165deg, var(--bg-card), var(--bg-raised)); border:1px solid var(--line);
     border-radius:var(--radius-lg); padding:22px 20px; margin-bottom:14px; position:relative; overflow:hidden;}
+  .hero::before{content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg, transparent, var(--ice), var(--ice-2), transparent); opacity:.85;}
   .hero-row{display:flex; align-items:center; justify-content:space-between; gap:16px;}
   .battery-wrap{display:flex; align-items:center; gap:14px;}
   .battery-ring{width:74px; height:74px; flex:none;}
@@ -73,17 +78,19 @@
   .ctrl-label{font-size:13px; color:var(--text-dim); font-weight:500;}
   .ctrl-state{font-size:15.5px; font-weight:600; margin-top:auto;}
   .icon-btn{width:34px; height:34px; border-radius:50%; border:none; background:var(--bg-raised); color:var(--text);
-    display:flex; align-items:center; justify-content:center; flex:none; transition:transform .12s ease, background .15s; cursor:pointer;}
+    display:flex; align-items:center; justify-content:center; flex:none; transition:transform .12s ease, background .15s, box-shadow .15s; cursor:pointer;}
   .icon-btn:active{transform:scale(.9); background:var(--ice-dim);}
-  .icon-btn.on{background:var(--ice-dim); color:var(--ice);}
-  .icon-btn.amber.on{background:var(--amber-dim); color:var(--amber);}
+  .icon-btn.on{background:var(--ice-dim); color:var(--ice); box-shadow:0 0 0 1px var(--ice-dim), 0 0 14px var(--ice-glow);}
+  .icon-btn.amber.on{background:var(--amber-dim); color:var(--amber); box-shadow:0 0 14px rgba(255,178,104,.3);}
 
   .full-btn{width:100%; padding:13px; border-radius:var(--radius-sm); border:1px solid var(--line);
     background:var(--bg-card); color:var(--text); font-size:14.5px; font-weight:600; text-align:center;
-    transition:transform .12s ease, background .15s; margin-top:2px; cursor:pointer;}
+    transition:transform .12s ease, background .15s, box-shadow .15s; margin-top:2px; cursor:pointer;}
   .full-btn:active{transform:scale(.97);}
-  .full-btn.primary{background:linear-gradient(135deg, var(--ice), #3aa9ba); color:#04262b; border:none;}
-  .full-btn.ghost{background:transparent; color:var(--text-dim);}
+  .full-btn.primary{background:linear-gradient(135deg, var(--ice), var(--ice-2)); color:#051217; border:none;
+    box-shadow:0 6px 22px rgba(63,224,255,.28);}
+  .full-btn.primary:active{box-shadow:0 2px 10px rgba(63,224,255,.35);}
+  .full-btn.ghost{background:transparent; color:var(--text-dim); border-color:var(--line);}
   .full-btn:disabled{opacity:.45;}
 
   .stepper{display:flex; align-items:center; justify-content:space-between; background:var(--bg-raised);
@@ -109,15 +116,15 @@
   .time-input{background:var(--bg-raised); border:1px solid var(--line); border-radius:var(--radius-sm); color:var(--text);
     font-family:'Space Grotesk'; font-size:24px; font-weight:600; padding:10px 14px; width:118px; text-align:center;}
   .toggle{width:46px; height:27px; border-radius:20px; background:var(--bg-raised); border:1px solid var(--line);
-    position:relative; flex:none; transition:background .2s; cursor:pointer;}
+    position:relative; flex:none; transition:background .2s, box-shadow .2s; cursor:pointer;}
   .toggle::after{content:''; position:absolute; width:21px; height:21px; border-radius:50%; background:var(--text-faint);
     top:2px; left:2px; transition:transform .2s, background .2s;}
-  .toggle.on{background:var(--ice-dim); border-color:var(--ice);}
+  .toggle.on{background:var(--ice-dim); border-color:var(--ice); box-shadow:0 0 12px var(--ice-glow);}
   .toggle.on::after{transform:translateX(19px); background:var(--ice);}
   .days{display:flex; gap:6px; margin-top:14px;}
   .day{flex:1; text-align:center; padding:8px 0; border-radius:10px; background:var(--bg-raised); border:1px solid var(--line);
-    font-size:12.5px; color:var(--text-faint); font-weight:600; cursor:pointer;}
-  .day.on{background:var(--ice-dim); color:var(--ice); border-color:var(--ice);}
+    font-size:12.5px; color:var(--text-faint); font-weight:600; cursor:pointer; transition:box-shadow .2s;}
+  .day.on{background:var(--ice-dim); color:var(--ice); border-color:var(--ice); box-shadow:0 0 10px var(--ice-glow);}
   .dep-info{margin-top:14px; padding:12px 14px; background:var(--bg-raised); border-radius:var(--radius-sm);
     font-size:12.5px; color:var(--text-dim); line-height:1.5;}
   .dep-info b{color:var(--text); font-weight:600;}
