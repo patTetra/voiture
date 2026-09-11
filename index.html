@@ -296,7 +296,12 @@
     <div class="dep-info" id="depInfo">Règle une heure de départ, choisis tes options, puis appuie sur « Lancer le compte à rebours ». Home Assistant calcule seul le meilleur moment pour démarrer (minimum 15 min avant le départ).</div>
     <button class="full-btn primary" id="armBtn" style="margin-top:14px;">🚀 Lancer le compte à rebours</button>
     <button class="full-btn ghost" id="disarmBtn" style="display:none;">Désarmer</button>
-    <button class="full-btn ghost" id="leaveNowBtn">Je pars dans 30 min</button>
+    <div class="ctrl-label" style="margin-top:12px;">Départ rapide</div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button class="full-btn ghost" id="quick15Btn" style="flex:1; padding:11px 2px; font-size:13px;">15 min</button>
+      <button class="full-btn ghost" id="quick30Btn" style="flex:1; padding:11px 2px; font-size:13px;">30 min</button>
+      <button class="full-btn ghost" id="quick60Btn" style="flex:1; padding:11px 2px; font-size:13px;">1 h</button>
+    </div>
     <button class="full-btn ghost" id="testFlowBtn">Tester la séquence maintenant</button>
   </div>
 
@@ -329,10 +334,31 @@
       <div class="field"><label>Longitude</label><input id="cfgLon" placeholder="2.35"></div>
     </div>
     <button class="full-btn ghost" id="useGeo" style="margin-bottom:4px;">Forcer la géolocalisation</button>
+  </fieldset>
+
+  <fieldset class="fieldset">
+    <legend>Consignes de température intérieure</legend>
+    <p class="hint" style="margin-top:0;">Ces valeurs sont envoyées à Home Assistant et pilotent directement l'automatisation.</p>
     <div class="field-row">
-      <div class="field"><label>Confort chaud (°C)</label><input id="comfortHeat" placeholder="21"></div>
-      <div class="field"><label>Confort froid (°C)</label><input id="comfortCool" placeholder="20"></div>
+      <div class="field"><label>Seuil 1 — très froid (°C)</label><input id="seuil1" placeholder="10"></div>
+      <div class="field"><label>Cible chauffage fort (°C)</label><input id="cible1" placeholder="25"></div>
     </div>
+    <div class="field-row">
+      <div class="field"><label>Seuil 2 — froid (°C)</label><input id="seuil2" placeholder="17"></div>
+      <div class="field"><label>Cible chauffage doux (°C)</label><input id="cible2" placeholder="22"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Seuil 3 — chaud (°C)</label><input id="seuil3" placeholder="25"></div>
+      <div class="field"><label>Cible clim douce (°C)</label><input id="cible3" placeholder="20"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Seuil 4 — très chaud (°C)</label><input id="seuil4" placeholder="40"></div>
+      <div class="field"><label>Cible clim forte (°C)</label><input id="cible4" placeholder="18"></div>
+    </div>
+    <p class="hint" style="margin-bottom:16px;">
+      &lt; Seuil 1 → chauffage à Cible 1 · Seuil 1–2 → chauffage à Cible 2 · Seuil 2–3 → rien ·
+      Seuil 3–4 → clim à Cible 3 · &gt; Seuil 4 → clim à Cible 4
+    </p>
   </fieldset>
 
   <button class="full-btn primary" id="saveSettings">Enregistrer</button>
@@ -364,7 +390,11 @@ const ENT = {
   prefSeatHeat: 'input_boolean.tesla_pref_seat_heat',
   prefWheelHeat: 'input_boolean.tesla_pref_wheel_heat',
   prefDefrost: 'input_boolean.tesla_pref_defrost',
-  triggerTime: 'input_datetime.tesla_precondition_trigger_time'
+  triggerTime: 'input_datetime.tesla_precondition_trigger_time',
+  seuil1: 'input_number.tesla_seuil_1', seuil2: 'input_number.tesla_seuil_2',
+  seuil3: 'input_number.tesla_seuil_3', seuil4: 'input_number.tesla_seuil_4',
+  cible1: 'input_number.tesla_cible_1', cible2: 'input_number.tesla_cible_2',
+  cible3: 'input_number.tesla_cible_3', cible4: 'input_number.tesla_cible_4'
 };
 
 const SEATS = {
@@ -379,7 +409,8 @@ const SEAT_LEVELS = ['off','low','medium','high'];
 const SEAT_COLORS = { off:'var(--bg-raised)', low:'var(--amber-dim)', medium:'#5c3a15', high:'var(--amber)' };
 let seatState = {};
 
-let cfg = { baseUrl:'', token:'', awakeStates:'on', comfortHeat:21, comfortCool:20, lat:null, lon:null };
+let cfg = { baseUrl:'', token:'', awakeStates:'on', lat:null, lon:null,
+  seuil1:10, seuil2:17, seuil3:25, seuil4:40, cible1:25, cible2:22, cible3:20, cible4:18 };
 let logEntries = [];
 let climateTargetTemp = 21;
 let forecastCache = { ts:0, data:null };
@@ -643,11 +674,19 @@ async function updateDepartureInfo(){
 }
 
 
-function openSheet(){
+const THRESH_FIELDS = ['seuil1','seuil2','seuil3','seuil4','cible1','cible2','cible3','cible4'];
+
+async function openSheet(){
   $('cfgUrl').value = cfg.baseUrl||''; $('cfgToken').value = cfg.token||'';
   $('cfgLat').value = cfg.lat ?? ''; $('cfgLon').value = cfg.lon ?? '';
-  $('comfortHeat').value = cfg.comfortHeat; $('comfortCool').value = cfg.comfortCool;
+  THRESH_FIELDS.forEach(k => { $(k).value = cfg[k]; });
   $('sheet').classList.add('open'); $('backdrop').classList.add('open');
+  if(cfg.baseUrl && cfg.token){
+    try{
+      const states = await Promise.all(THRESH_FIELDS.map(k => getState(ENT[k])));
+      states.forEach((s,i) => { if(s && s.state && s.state !== 'unknown') $(THRESH_FIELDS[i]).value = parseFloat(s.state); });
+    }catch(e){ /* champs locaux gardés si HA injoignable */ }
+  }
 }
 function closeSheet(){ $('sheet').classList.remove('open'); $('backdrop').classList.remove('open'); }
 $('openSettings').onclick = openSheet;
@@ -671,14 +710,21 @@ $('useGeo').onclick = ()=>{
   }, ()=> toast('Position refusée'));
 };
 
-$('saveSettings').onclick = ()=>{
+$('saveSettings').onclick = async ()=>{
+  const newVals = {};
+  THRESH_FIELDS.forEach(k => { newVals[k] = parseFloat($(k).value); if(isNaN(newVals[k])) newVals[k] = cfg[k]; });
   cfg = {
     baseUrl: $('cfgUrl').value.trim(), token: $('cfgToken').value.trim(), awakeStates:'on',
-    comfortHeat: parseFloat($('comfortHeat').value)||21, comfortCool: parseFloat($('comfortCool').value)||20,
-    lat: $('cfgLat').value ? parseFloat($('cfgLat').value) : null, lon: $('cfgLon').value ? parseFloat($('cfgLon').value) : null
+    lat: $('cfgLat').value ? parseFloat($('cfgLat').value) : null, lon: $('cfgLon').value ? parseFloat($('cfgLon').value) : null,
+    ...newVals
   };
   saveStore('ha-config', cfg);
-  closeSheet(); toast('Réglages enregistrés');
+  if(cfg.baseUrl && cfg.token){
+    try{
+      await Promise.all(THRESH_FIELDS.map(k => callService('input_number','set_value',{entity_id: ENT[k], value: cfg[k]})));
+    }catch(e){ toast('Enregistré en local — échec envoi à Home Assistant'); closeSheet(); return; }
+  }
+  closeSheet(); toast('Réglages enregistrés et envoyés à Home Assistant');
   refreshStatus(); loadDepartureFromHA();
 };
 
@@ -738,11 +784,7 @@ $('wheelBtn').onclick = async ()=>{
    RÉGLAGES & DÉPART PROGRAMMÉ
    ========================================================= */
 
-// Boutons d'action : lancent la séquence de préchauffage immédiatement
-$('leaveNowBtn').onclick = () => {
-  triggerPrecondition('départ imminent (30 min)', new Date(Date.now() + 30 * 60000));
-};
-
+// Bouton "tester" : lance la séquence immédiatement, sans passer par l'armement programmé
 $('testFlowBtn').onclick = () => {
   triggerPrecondition('test manuel', new Date());
 };
@@ -766,8 +808,7 @@ $('depTime').onchange = async (e) => {
 // Bouton "Lancer le compte à rebours" = ARMEMENT manuel à usage unique.
 // Vérifie qu'une heure de départ future est réglée, puis arme dans HA.
 // L'automatisation HA se désarme elle-même une fois le préchauffage lancé (ou si l'heure est dépassée).
-$('armBtn').onclick = async () => {
-  const val = $('depTime').value;
+async function doArm(val) {
   if (!val) { toast('Règle d\'abord une heure de départ'); return; }
   const [h, m] = val.split(':').map(Number);
   const dep = new Date(); dep.setHours(h, m, 0, 0);
@@ -786,7 +827,21 @@ $('armBtn').onclick = async () => {
   } catch (err) {
     toast('Échec de mise à jour Home Assistant');
   }
-};
+}
+
+$('armBtn').onclick = () => doArm($('depTime').value);
+
+// Raccourcis "départ dans X minutes" : règlent l'heure puis arment via le même circuit
+// que le bouton principal (donc respectent le délai minimum de 15 min calculé côté HA).
+function armInMinutes(minutes) {
+  const dep = new Date(Date.now() + minutes * 60000);
+  const val = String(dep.getHours()).padStart(2, '0') + ':' + String(dep.getMinutes()).padStart(2, '0');
+  $('depTime').value = val;
+  doArm(val);
+}
+$('quick15Btn').onclick = () => armInMinutes(15);
+$('quick30Btn').onclick = () => armInMinutes(30);
+$('quick60Btn').onclick = () => armInMinutes(60);
 
 $('disarmBtn').onclick = async () => {
   try {
