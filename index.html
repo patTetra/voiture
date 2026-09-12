@@ -274,6 +274,23 @@
     </div>
   </div>
 
+  <div class="section-title">Départ programmé</div>
+  <div class="departure">
+    <div class="dep-row">
+      <input type="time" class="time-input" id="depTime" value="08:00">
+    </div>
+
+    <div class="dep-info" id="depInfo" style="display:none;"></div>
+    <button class="full-btn primary" id="armBtn" style="margin-top:14px;">🚀 Lancer le compte à rebours</button>
+    <button class="full-btn ghost" id="disarmBtn" style="display:none;">Désarmer</button>
+    <div class="ctrl-label" style="margin-top:12px;">Départ rapide</div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button class="full-btn ghost" id="quick15Btn" style="flex:1; padding:11px 2px; font-size:13px;">15 min</button>
+      <button class="full-btn ghost" id="quick30Btn" style="flex:1; padding:11px 2px; font-size:13px;">30 min</button>
+      <button class="full-btn ghost" id="quick60Btn" style="flex:1; padding:11px 2px; font-size:13px;">1 h</button>
+    </div>
+  </div>
+
   <div class="section-title">Habitacle</div>
   <div class="cabin-card">
     <svg class="cabin-svg" width="220" height="200" viewBox="0 0 220 200">
@@ -313,24 +330,6 @@
       <div class="ctrl-card">
         <div class="ctrl-top"><span class="ctrl-label">Volant chauffant</span><button class="icon-btn amber" id="wheelBtn">◎</button></div>
       </div>
-    </div>
-  </div>
-
-  <div class="section-title">Départ programmé</div>
-  <div class="status-line"><span class="ic">●</span><span id="autoStatusMsg">L'automatisation Home Assistant n'a pas encore tourné.</span></div>
-  <div class="departure">
-    <div class="dep-row">
-      <input type="time" class="time-input" id="depTime" value="08:00">
-    </div>
-
-    <div class="dep-info" id="depInfo" style="display:none;"></div>
-    <button class="full-btn primary" id="armBtn" style="margin-top:14px;">🚀 Lancer le compte à rebours</button>
-    <button class="full-btn ghost" id="disarmBtn" style="display:none;">Désarmer</button>
-    <div class="ctrl-label" style="margin-top:12px;">Départ rapide</div>
-    <div style="display:flex; gap:8px; margin-top:8px;">
-      <button class="full-btn ghost" id="quick15Btn" style="flex:1; padding:11px 2px; font-size:13px;">15 min</button>
-      <button class="full-btn ghost" id="quick30Btn" style="flex:1; padding:11px 2px; font-size:13px;">30 min</button>
-      <button class="full-btn ghost" id="quick60Btn" style="flex:1; padding:11px 2px; font-size:13px;">1 h</button>
     </div>
   </div>
 
@@ -610,10 +609,12 @@ async function refreshStatus(){
   }
   if(defrost) $('defrostBtn').classList.toggle('on', defrost.state === 'on');
   if(wheel) $('wheelBtn').classList.toggle('on', wheel.state === 'on');
-  if(autoMsg && autoMsg.state && autoMsg.state !== 'unknown'){
-    $('autoStatusMsg').textContent = autoMsg.state;
-  }
   refreshSeats();
+}
+
+function setDepTimeToNow(){
+  const now = new Date();
+  $('depTime').value = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
 }
 
 async function loadDepartureFromHA(){
@@ -621,8 +622,13 @@ async function loadDepartureFromHA(){
   const [auto, time] = await Promise.all([
     getState(ENT.depAuto), getState(ENT.depTime)
   ]);
-  setArmedUI(auto && auto.state === 'on');
-  if(time && time.state){ $('depTime').value = time.state.slice(0,5); }
+  const armed = auto && auto.state === 'on';
+  setArmedUI(armed);
+  if(armed && time && time.state){
+    $('depTime').value = time.state.slice(0,5);
+  } else if(!armed){
+    setDepTimeToNow();
+  }
   updateDepartureInfo();
 }
 
@@ -839,6 +845,7 @@ function tickClock(){ $('clock').textContent = new Date().toLocaleTimeString('fr
 
 (function init(){
   cfg = loadStore('ha-config', cfg);
+  setDepTimeToNow();
   tickClock(); setInterval(tickClock, 30000);
   updateLocationAuto();
   refreshStatus(); loadDepartureFromHA();
