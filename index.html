@@ -315,20 +315,7 @@
       <input type="time" class="time-input" id="depTime" value="08:00">
     </div>
 
-    <div class="dep-row" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line);">
-      <span class="ctrl-label">Sièges chauffants</span>
-      <div class="toggle" id="prefSeatToggle"></div>
-    </div>
-    <div class="dep-row" style="margin-top:10px;">
-      <span class="ctrl-label">Volant chauffant</span>
-      <div class="toggle" id="prefWheelToggle"></div>
-    </div>
-    <div class="dep-row" style="margin-top:10px;">
-      <span class="ctrl-label">Dégivrage</span>
-      <div class="toggle" id="prefDefrostToggle"></div>
-    </div>
-
-    <div class="dep-info" id="depInfo">Règle une heure de départ, choisis tes options, puis appuie sur « Lancer le compte à rebours ». Home Assistant calcule seul le meilleur moment pour démarrer (minimum 15 min avant le départ).</div>
+    <div class="dep-info" id="depInfo" style="display:none;"></div>
     <button class="full-btn primary" id="armBtn" style="margin-top:14px;">🚀 Lancer le compte à rebours</button>
     <button class="full-btn ghost" id="disarmBtn" style="display:none;">Désarmer</button>
     <div class="ctrl-label" style="margin-top:12px;">Départ rapide</div>
@@ -337,11 +324,7 @@
       <button class="full-btn ghost" id="quick30Btn" style="flex:1; padding:11px 2px; font-size:13px;">30 min</button>
       <button class="full-btn ghost" id="quick60Btn" style="flex:1; padding:11px 2px; font-size:13px;">1 h</button>
     </div>
-    <button class="full-btn ghost" id="testFlowBtn">Tester la séquence maintenant</button>
   </div>
-
-  <div class="section-title">Journal (actions manuelles)</div>
-  <div class="log" id="log"><div class="log-empty">Aucune activité pour l'instant</div></div>
 
   <div class="tab-bar">
     <button class="gear" id="openSettings">⚙︎</button>
@@ -422,9 +405,6 @@ const ENT = {
   depDays: 'input_text.tesla_departure_days',
   statusMsg: 'input_text.tesla_precondition_status',
   notify: 'notify.mobile_app_iphone_15_pro_de_patrick',
-  prefSeatHeat: 'input_boolean.tesla_pref_seat_heat',
-  prefWheelHeat: 'input_boolean.tesla_pref_wheel_heat',
-  prefDefrost: 'input_boolean.tesla_pref_defrost',
   triggerTime: 'input_datetime.tesla_precondition_trigger_time',
   seuil1: 'input_number.tesla_seuil_1', seuil2: 'input_number.tesla_seuil_2',
   seuil3: 'input_number.tesla_seuil_3', seuil4: 'input_number.tesla_seuil_4',
@@ -446,7 +426,6 @@ let seatState = {};
 
 let cfg = { baseUrl:'', token:'', awakeStates:'on', lat:null, lon:null,
   seuil1:10, seuil2:17, seuil3:25, seuil4:40, cible1:25, cible2:22, cible3:20, cible4:18 };
-let logEntries = [];
 let climateTargetTemp = 21;
 let forecastCache = { ts:0, data:null };
 
@@ -470,17 +449,8 @@ function toast(msg){
 }
 
 function log(msg){
-  const time = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-  logEntries.unshift({time, msg});
-  logEntries = logEntries.slice(0,40);
-  renderLog();
-  saveStore('activity-log', logEntries);
-}
-
-function renderLog(){
-  const el = $('log');
-  if(!logEntries.length){ el.innerHTML = '<div class="log-empty">Aucune activité pour l\'instant</div>'; return; }
-  el.innerHTML = logEntries.map(e => `<div class="log-item"><span class="ic-square">🚗</span><span style="flex:1;">${e.msg}</span><span class="t">${e.time}</span></div>`).join('');
+  // Journal désactivé dans l'app — on garde la fonction pour ne pas casser les appels existants.
+  console.debug(msg);
 }
 
 async function haFetch(path, opts={}){
@@ -564,24 +534,6 @@ async function estimateOutsideTemp(departureDate){
   return { temp: 15, source: 'valeur par défaut' };
 }
 
-async function triggerPrecondition(reason, departureDate){
-  const est = await estimateOutsideTemp(departureDate);
-  log('Lancement manuel : '+reason+' · ext '+est.temp.toFixed(1)+'°C ('+est.source+')');
-  try{
-    await callService('script', 'turn_on', {
-      entity_id: ENT.script,
-      variables: {
-        outside_temp: est.temp,
-        reason: reason
-      }
-    });
-    toast('Séquence lancée — HA calcule la température cible');
-  }catch(e){ 
-    log('⚠ Échec appel script : '+e.message); 
-    toast('Échec — vérifie les réglages'); 
-  }
-}
-
 function paintSeat(id, level){
   const g = document.getElementById(id);
   if(!g) return;
@@ -658,31 +610,13 @@ async function refreshStatus(){
 
 async function loadDepartureFromHA(){
   if(!cfg.baseUrl || !cfg.token) return;
-  const [auto, time, seat, wheel, defrost] = await Promise.all([
-    getState(ENT.depAuto), getState(ENT.depTime),
-    getState(ENT.prefSeatHeat), getState(ENT.prefWheelHeat), getState(ENT.prefDefrost)
+  const [auto, time] = await Promise.all([
+    getState(ENT.depAuto), getState(ENT.depTime)
   ]);
   setArmedUI(auto && auto.state === 'on');
   if(time && time.state){ $('depTime').value = time.state.slice(0,5); }
-  if(seat) $('prefSeatToggle').classList.toggle('on', seat.state === 'on');
-  if(wheel) $('prefWheelToggle').classList.toggle('on', wheel.state === 'on');
-  if(defrost) $('prefDefrostToggle').classList.toggle('on', defrost.state === 'on');
   updateDepartureInfo();
 }
-
-function bindPrefToggle(btnId, entityId, label){
-  $(btnId).onclick = async () => {
-    const on = $(btnId).classList.contains('on');
-    try{
-      await callService('input_boolean', on ? 'turn_off' : 'turn_on', {entity_id: entityId});
-      $(btnId).classList.toggle('on', !on);
-      log((on ? 'Désactivé : ' : 'Activé : ')+label);
-    }catch(e){ toast('Commande impossible'); }
-  };
-}
-bindPrefToggle('prefSeatToggle', ENT.prefSeatHeat, 'sièges chauffants au départ');
-bindPrefToggle('prefWheelToggle', ENT.prefWheelHeat, 'volant chauffant au départ');
-bindPrefToggle('prefDefrostToggle', ENT.prefDefrost, 'dégivrage au départ');
 
 function setArmedUI(armed){
   $('armBtn').style.display = armed ? 'none' : '';
@@ -693,19 +627,27 @@ function setArmedUI(armed){
 async function updateDepartureInfo(){
   const armed = $('disarmBtn').style.display !== 'none';
   if(!armed){
-    $('depInfo').textContent = 'Règle une heure de départ, choisis tes options, puis appuie sur « Lancer le compte à rebours ». Home Assistant calcule seul le meilleur moment pour démarrer (minimum 15 min avant le départ).';
+    $('depInfo').style.display = 'none';
     return;
   }
-  if(!cfg.baseUrl || !cfg.token) return;
-  const [status, trig] = await Promise.all([ getState(ENT.statusMsg), getState(ENT.triggerTime) ]);
-  const msg = (status && status.state && status.state !== 'unknown')
-    ? status.state
-    : 'Calcul en cours par Home Assistant (réveil de la voiture)…';
-  let triggerLine = '';
-  if(trig && trig.state && trig.state !== 'unknown'){
-    triggerLine = `<br>Préchauffage programmé à <b>${trig.state.slice(0,5)}</b>`;
+  $('depInfo').style.display = '';
+  const [h, m] = $('depTime').value.split(':').map(Number);
+  const dep = new Date(); dep.setHours(h, m, 0, 0);
+  const est = await estimateOutsideTemp(dep);
+  let sentence = `Vous partez à <b>${$('depTime').value}</b>, il fait <b>${Math.round(est.temp)}°C</b> dehors.`;
+
+  if(cfg.baseUrl && cfg.token){
+    const [status, trig] = await Promise.all([ getState(ENT.statusMsg), getState(ENT.triggerTime) ]);
+    if(trig && trig.state && trig.state !== 'unknown'){
+      sentence += ` Le préchauffage démarrera vers <b>${trig.state.slice(0,5)}</b>.`;
+    } else {
+      sentence += ` Home Assistant calcule le meilleur moment pour démarrer…`;
+    }
+    if(status && status.state && status.state !== 'unknown' && /lancé|confortable|échec/.test(status.state)){
+      sentence += `<br><span style="color:var(--text-faint); font-size:11.5px;">${status.state}</span>`;
+    }
   }
-  $('depInfo').innerHTML = `${msg}${triggerLine}<span class="tag">se désarme après déclenchement</span>`;
+  $('depInfo').innerHTML = sentence;
 }
 
 
@@ -819,11 +761,6 @@ $('wheelBtn').onclick = async ()=>{
    RÉGLAGES & DÉPART PROGRAMMÉ
    ========================================================= */
 
-// Bouton "tester" : lance la séquence immédiatement, sans passer par l'armement programmé
-$('testFlowBtn').onclick = () => {
-  triggerPrecondition('test manuel', new Date());
-};
-
 // Modification de l'heure : met SEULEMENT à jour l'input_datetime dans HA (sans déclencher le script)
 $('depTime').onchange = async (e) => {
   const val = e.target.value;
@@ -894,8 +831,6 @@ function tickClock(){ $('clock').textContent = new Date().toLocaleTimeString('fr
 
 (function init(){
   cfg = loadStore('ha-config', cfg);
-  logEntries = loadStore('activity-log', []);
-  renderLog();
   tickClock(); setInterval(tickClock, 30000);
   updateLocationAuto();
   refreshStatus(); loadDepartureFromHA();
