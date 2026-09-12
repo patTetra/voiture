@@ -427,8 +427,8 @@ const SEATS = {
   'seat-arD': 'input_select.tesla_pref_siege_ard'
 };
 
-const SEAT_LEVELS = ['off','low','medium','high'];
-const SEAT_COLORS = { off:'var(--bg-raised)', low:'var(--amber-dim)', medium:'#5c3a15', high:'var(--amber)' };
+const SEAT_LEVELS = ['eteint','low','medium','high'];
+const SEAT_COLORS = { eteint:'var(--bg-raised)', low:'var(--amber-dim)', medium:'#5c3a15', high:'var(--amber)' };
 let seatState = {};
 
 let cfg = { baseUrl:'', token:'', awakeStates:'on', lat:null, lon:null,
@@ -548,14 +548,14 @@ async function estimateOutsideTemp(departureDate){
 function paintSeat(id, level){
   const g = document.getElementById(id);
   if(!g) return;
-  g.querySelector('rect').style.fill = SEAT_COLORS[level] || SEAT_COLORS.off;
-  g.querySelector('rect').style.stroke = level==='off' ? 'var(--line)' : 'var(--amber)';
+  g.querySelector('rect').style.fill = SEAT_COLORS[level] || SEAT_COLORS.eteint;
+  g.querySelector('rect').style.stroke = level==='eteint' ? 'var(--line)' : 'var(--amber)';
 }
 
 async function refreshSeats(){
   for(const [id, entity] of Object.entries(SEATS)){
     const s = await getState(entity);
-    const lvl = s && SEAT_LEVELS.includes(s.state) ? s.state : 'off';
+    const lvl = s && SEAT_LEVELS.includes(s.state) ? s.state : 'eteint';
     seatState[id] = lvl; paintSeat(id, lvl);
   }
 }
@@ -563,7 +563,7 @@ async function refreshSeats(){
 document.querySelectorAll('.seat').forEach(g=>{
   g.addEventListener('click', async ()=>{
     const id = g.id, entity = SEATS[id];
-    const cur = seatState[id] || 'off';
+    const cur = seatState[id] || 'eteint';
     const next = SEAT_LEVELS[(SEAT_LEVELS.indexOf(cur)+1) % SEAT_LEVELS.length];
     seatState[id] = next; paintSeat(id, next);
     try{ await callService('input_select','select_option',{entity_id:entity, option:next}); }
