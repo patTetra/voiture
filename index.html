@@ -63,6 +63,8 @@
   .carwrap{position:relative; margin:6px -4px 4px;}
   .carwrap img{display:block; width:100%; height:auto; mix-blend-mode:lighten; user-select:none; -webkit-user-drag:none;}
   .carwrap svg{position:absolute; inset:0; width:100%; height:100%; pointer-events:none;}
+  #cable2{fill:none; stroke:var(--green); stroke-width:11; stroke-linecap:round; opacity:0; transition:opacity .4s; filter:drop-shadow(0 0 14px rgba(23,213,142,.75));}
+  #cable2.show{opacity:1;}
   #cable{opacity:0; transition:opacity .4s; fill:none; stroke:var(--green); stroke-width:4; stroke-linecap:round; filter:drop-shadow(0 0 6px rgba(23,213,142,.75));}
   #cable.show{opacity:1;}
 
@@ -82,7 +84,7 @@
   .card{background:var(--card); border-radius:16px; margin-top:14px; overflow:hidden;}
   .card-pad{padding:18px;}
   .row-link{display:flex; align-items:center; gap:16px; padding:20px 18px; width:100%; background:none; border:none; text-align:left;}
-  .row-link svg.lead{width:30px; height:30px; fill:var(--dim); flex:none;}
+  .row-link svg.lead{width:30px; height:30px; fill:var(--dim); color:var(--dim); flex:none;}
   .row-link .t{font-size:21px; font-weight:600; letter-spacing:-.2px;}
   .row-link .s{font-size:14px; color:var(--dim); margin-top:2px;}
   .row-link .chev{margin-left:auto; width:22px; height:22px; fill:none; stroke:var(--faint); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;}
@@ -247,7 +249,7 @@
 
     <div class="card">
       <button class="row-link" id="rowControls">
-        <svg class="lead" viewBox="0 0 24 24"><path d="M5.6 11 7 6.8A2.2 2.2 0 0 1 9.1 5.2h5.8c.9 0 1.8.6 2.1 1.6L18.4 11H19c1.1 0 2 .9 2 2v4a1 1 0 0 1-1 1h-1v1.2c0 .5-.4.8-.8.8h-1.4c-.5 0-.8-.3-.8-.8V18H8v1.2c0 .5-.4.8-.8.8H5.8c-.5 0-.8-.3-.8-.8V18H4a1 1 0 0 1-1-1v-4c0-1.1.9-2 2-2h.6z"/></svg>
+        <svg class="lead" viewBox="0 0 24 24"><rect x="3.4" y="3.2" width="6.2" height="12.4" rx="2.8" transform="rotate(-10 6.5 9.4)"/><rect x="5.6" y="13.6" width="15" height="4.4" rx="2.2"/><rect x="8" y="18.8" width="10.4" height="2" rx="1"/><path d="M12.6 3.2c.9.9-.9 1.9 0 2.8s.9 1.9 0 2.8M15.8 3.2c.9.9-.9 1.9 0 2.8s.9 1.9 0 2.8M19 3.2c.9.9-.9 1.9 0 2.8s.9 1.9 0 2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         <div>
           <div class="t">Climatisation et sièges</div>
           <div class="s">Intérieur <span id="insideTemp">--°</span> · Cible <span id="climateTargetShown">--°</span></div>
@@ -327,6 +329,7 @@
           <use class="w w2" href="#wave" transform="translate(564.0,717) scale(2.9)"/>
           <use class="w w3" href="#wave" transform="translate(587.0,717) scale(2.9)"/>
         </g>
+          <path id="cable2" d="M70 1330 C62 1374 40 1424 50 1488"/>
         </svg>
       </div>
     </div>
@@ -583,6 +586,16 @@ function renderPosition(tracker, arrivee){
   box.appendChild(sub);
 }
 
+const CHARGE_LABELS = {
+  charging:'Recharge en cours', complete:'Recharge terminée', disconnected:'Débranchée',
+  stopped:'Recharge arrêtée', starting:'Démarrage de la recharge', nopower:'Pas de courant',
+  pending:'Recharge programmée', scheduled:'Recharge programmée'
+};
+function chargeLabel(raw){
+  const key = String(raw||'').toLowerCase().replace(/[^a-z]/g,'');
+  return CHARGE_LABELS[key] || String(raw||'');
+}
+
 function fmtTemp(v){ return isNaN(parseFloat(v)) ? '--' : Math.round(parseFloat(v)) + '°C'; }
 
 async function refreshStatus(){
@@ -617,11 +630,12 @@ async function refreshStatus(){
   }
   if(weather && weather.attributes) $('outTemp').textContent = fmtTemp(weather.attributes.temperature);
   if(charge && charge.state){
-    lastChargeText = charge.state;
-    $('chargeState').textContent = charge.state;
+    lastChargeText = chargeLabel(charge.state);
+    $('chargeState').textContent = lastChargeText;
     const charging = /charg/i.test(charge.state) && !/(complete|termin|disconn|d[ée]branch|stopp|arr[êe]t)/i.test(charge.state);
     $('boltIcon').classList.toggle('show', charging);
     $('cable').classList.toggle('show', charging);
+    $('cable2').classList.toggle('show', charging);
     $('qCharge').classList.toggle('on', charging);
   }
   if(lockS){
@@ -760,7 +774,7 @@ async function toggleClimate(){
 $('climateBtn').onclick = toggleClimate;
 $('qClimate').onclick = toggleClimate;
 
-$('qCharge').onclick = () => toast(lastChargeText ? 'Charge : ' + lastChargeText : 'État de charge inconnu');
+$('qCharge').onclick = () => toast(lastChargeText ? lastChargeText : 'État de charge inconnu');
 
 $('lockBtn').onclick = async ()=>{
   const locked = $('lockBtn').classList.contains('on');
