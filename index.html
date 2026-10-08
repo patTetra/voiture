@@ -12,8 +12,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Model Y">
 <meta name="theme-color" content="#121b29">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg: #1c2733;
@@ -133,6 +131,7 @@
   .cabin-legend i{width:9px; height:9px; border-radius:3px; display:inline-block;}
   .cabin-extra{display:flex; gap:10px; margin-top:16px; padding-top:14px; border-top:1px solid var(--line);}
   .cabin-extra .ctrl-card{flex:1; min-height:auto;}
+  .cabin-note{font-size:11.5px; color:var(--text-faint); text-align:center; margin:12px 0 0; line-height:1.4;}
 
   .departure{background:var(--bg-card); border:1px solid var(--line); backdrop-filter: blur(22px) saturate(150%);
     -webkit-backdrop-filter: blur(22px) saturate(150%); box-shadow:0 8px 28px rgba(0,0,0,.24);
@@ -141,37 +140,14 @@
   .time-input{background:var(--bg-raised); border:1px solid var(--line); border-radius:var(--radius-sm); color:var(--text);
     font-family:inherit; font-size:30px; font-weight:200; padding:10px 14px; width:130px; text-align:center;
     font-variant-numeric: tabular-nums;}
-  .toggle{width:46px; height:27px; border-radius:20px; background:var(--bg-raised); border:1px solid var(--line);
-    position:relative; flex:none; transition:background .2s, box-shadow .2s; cursor:pointer;}
-  .toggle::after{content:''; position:absolute; width:21px; height:21px; border-radius:50%; background:#fff;
-    top:2px; left:2px; transition:transform .2s, background .2s; box-shadow:0 1px 3px rgba(0,0,0,.3);}
-  .toggle.on{background:var(--ice-dim); border-color:rgba(111,216,255,.4); box-shadow:0 0 12px var(--ice-glow);}
-  .toggle.on::after{transform:translateX(19px); background:var(--ice);}
-  .days{display:flex; gap:6px; margin-top:14px;}
-  .day{flex:1; text-align:center; padding:8px 0; border-radius:10px; background:var(--bg-raised); border:1px solid var(--line);
-    font-size:12.5px; color:var(--text-dim); font-weight:600; cursor:pointer; transition:box-shadow .2s;}
-  .day.on{background:var(--ice-dim); color:var(--ice); border-color:rgba(111,216,255,.4); box-shadow:0 0 10px var(--ice-glow);}
   .dep-info{margin-top:14px; padding:12px 14px; background:var(--bg-raised); border:1px solid var(--line); border-radius:var(--radius-sm);
     font-size:12.5px; color:var(--text-dim); line-height:1.5;}
-  .dep-info b{color:var(--text); font-weight:600;}
-  .dep-info .tag{display:inline-block; font-size:10.5px; color:var(--text-dim); border:1px solid var(--line);
-    border-radius:6px; padding:1px 6px; margin-left:6px;}
+  .dep-info .sub{margin-top:6px; color:var(--text-faint); font-size:11.5px;}
   .status-line{background:var(--bg-card); border:1px solid var(--line); backdrop-filter: blur(20px) saturate(150%);
     -webkit-backdrop-filter: blur(20px) saturate(150%); box-shadow:0 6px 22px rgba(0,0,0,.22);
     border-radius:var(--radius-md); padding:13px 15px; font-size:13px; color:var(--text-dim); margin-bottom:14px;
-    display:flex; gap:10px; align-items:flex-start;}
-  .status-line .ic{color:var(--ice); flex:none;}
-
-  .log{background:var(--bg-card); border:1px solid var(--line); backdrop-filter: blur(20px) saturate(150%);
-    -webkit-backdrop-filter: blur(20px) saturate(150%); box-shadow:0 6px 22px rgba(0,0,0,.22);
-    border-radius:var(--radius-md); padding:8px 10px;}
-  .log-item{display:flex; gap:10px; padding:10px 6px; border-radius:16px; font-size:13px; align-items:flex-start;}
-  .log-item + .log-item{margin-top:4px;}
-  .log-item .ic-square{width:30px; height:30px; border-radius:9px; background:var(--ice-dim); color:var(--ice);
-    display:flex; align-items:center; justify-content:center; flex:none; font-size:14px;}
-  .log-item .t{color:var(--text-dim); font-variant-numeric: tabular-nums; flex:none; font-size:11.5px; padding-top:2px;
-    margin-left:auto;}
-  .log-empty{color:var(--text-dim); font-size:13px; padding:16px 0; text-align:center;}
+    line-height:1.5;}
+  .status-line .sub{color:var(--text-faint); font-size:11.5px; margin-top:2px;}
 
   .sheet-backdrop{position:fixed; inset:0; background:rgba(10,14,18,.5); backdrop-filter: blur(3px);
     opacity:0; pointer-events:none; transition:opacity .2s; z-index:20;}
@@ -195,7 +171,8 @@
   .tab-bar{position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:center; padding-bottom:var(--safe-bottom); z-index:15;}
   .gear{width:52px; height:52px; border-radius:50%; background:var(--bg-card); border:1px solid var(--line);
     backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%);
-    display:flex; align-items:center; justify-content:center; margin-bottom:14px; box-shadow:0 8px 24px rgba(0,0,0,.35); cursor:pointer;}
+    display:flex; align-items:center; justify-content:center; margin-bottom:14px; box-shadow:0 8px 24px rgba(0,0,0,.35); cursor:pointer;
+    color:var(--text); font-size:20px;}
   .gear:active{transform:scale(.93);}
   .toast{position:fixed; top:calc(var(--safe-top) + 10px); left:50%; transform:translateX(-50%) translateY(-140%);
     background:rgba(30,42,55,.85); backdrop-filter: blur(20px); border:1px solid var(--line); color:var(--text); font-size:13px; padding:10px 16px;
@@ -245,6 +222,8 @@
     </div>
   </div>
 
+  <div class="status-line" id="posLine" style="display:none;"></div>
+
   <div class="section-title">Commandes</div>
   <div class="grid2">
     <div class="ctrl-card">
@@ -291,7 +270,7 @@
     </div>
   </div>
 
-  <div class="section-title">Habitacle</div>
+  <div class="section-title">Habitacle · préférences du prochain lancement</div>
   <div class="cabin-card">
     <svg class="cabin-svg" width="220" height="200" viewBox="0 0 220 200">
       <rect x="18" y="8" width="184" height="184" rx="46" fill="none" stroke="var(--line)" stroke-width="2"/>
@@ -331,6 +310,7 @@
         <div class="ctrl-top"><span class="ctrl-label">Volant chauffant</span><button class="icon-btn amber" id="wheelBtn">◎</button></div>
       </div>
     </div>
+    <p class="cabin-note">Ces choix s'appliquent au prochain préchauffage automatique, puis se remettent à zéro.</p>
   </div>
 
   <div class="tab-bar">
@@ -352,36 +332,26 @@
   </fieldset>
 
   <fieldset class="fieldset">
-    <legend>Prévision météo (aperçu local)</legend>
-    <p class="hint" style="margin-top:0;">Mise à jour automatique à chaque ouverture de l'application.</p>
-    <div class="field-row">
-      <div class="field"><label>Latitude</label><input id="cfgLat" placeholder="48.85"></div>
-      <div class="field"><label>Longitude</label><input id="cfgLon" placeholder="2.35"></div>
-    </div>
-    <button class="full-btn ghost" id="useGeo" style="margin-bottom:4px;">Forcer la géolocalisation</button>
-  </fieldset>
-
-  <fieldset class="fieldset">
     <legend>Consignes de température intérieure</legend>
     <p class="hint" style="margin-top:0;">Ces valeurs sont envoyées à Home Assistant et pilotent directement l'automatisation.</p>
     <div class="field-row">
-      <div class="field"><label>Seuil 1 — très froid (°C)</label><input id="seuil1" placeholder="10"></div>
-      <div class="field"><label>Cible chauffage fort (°C)</label><input id="cible1" placeholder="25"></div>
+      <div class="field"><label>Seuil 1 — très froid (°C)</label><input id="seuil1" inputmode="decimal" placeholder="10"></div>
+      <div class="field"><label>Cible chauffage fort (°C)</label><input id="cible1" inputmode="decimal" placeholder="25"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Seuil 2 — froid (°C)</label><input id="seuil2" placeholder="17"></div>
-      <div class="field"><label>Cible chauffage doux (°C)</label><input id="cible2" placeholder="22"></div>
+      <div class="field"><label>Seuil 2 — froid (°C)</label><input id="seuil2" inputmode="decimal" placeholder="17"></div>
+      <div class="field"><label>Cible chauffage doux (°C)</label><input id="cible2" inputmode="decimal" placeholder="22"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Seuil 3 — chaud (°C)</label><input id="seuil3" placeholder="25"></div>
-      <div class="field"><label>Cible clim douce (°C)</label><input id="cible3" placeholder="20"></div>
+      <div class="field"><label>Seuil 3 — chaud (°C)</label><input id="seuil3" inputmode="decimal" placeholder="25"></div>
+      <div class="field"><label>Cible clim douce (°C)</label><input id="cible3" inputmode="decimal" placeholder="20"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Seuil 4 — très chaud (°C)</label><input id="seuil4" placeholder="40"></div>
-      <div class="field"><label>Cible clim forte (°C)</label><input id="cible4" placeholder="18"></div>
+      <div class="field"><label>Seuil 4 — très chaud (°C)</label><input id="seuil4" inputmode="decimal" placeholder="40"></div>
+      <div class="field"><label>Cible clim forte (°C)</label><input id="cible4" inputmode="decimal" placeholder="18"></div>
     </div>
     <p class="hint" style="margin-bottom:16px;">
-      &lt; Seuil 1 → chauffage à Cible 1 · Seuil 1–2 → chauffage à Cible 2 · Seuil 2–3 → rien ·
+      Température dans la voiture : &lt; Seuil 1 → chauffage à Cible 1 · Seuil 1–2 → chauffage à Cible 2 · Seuil 2–3 → rien ·
       Seuil 3–4 → clim à Cible 3 · &gt; Seuil 4 → clim à Cible 4
     </p>
   </fieldset>
@@ -404,20 +374,23 @@ const ENT = {
   range: 'sensor.tesla_model_y_autonomie',
   charge: 'sensor.tesla_model_y_charge',
   inside: 'sensor.tesla_model_y_temperature_interieure',
+  tracker: 'device_tracker.tesla_model_y_emplacement',
+  arrivee: 'input_datetime.tesla_arrivee_travail',
   prefDefrost: 'input_boolean.tesla_pref_defrost',
   prefWheelHeat: 'input_boolean.tesla_pref_wheel_heat',
-  script: 'script.tesla_precondition',
   depAuto: 'input_boolean.tesla_departure_auto',
   depTime: 'input_datetime.tesla_departure_time',
-  depDays: 'input_text.tesla_departure_days',
   statusMsg: 'input_text.tesla_precondition_status',
-  notify: 'notify.mobile_app_iphone_15_pro_de_patrick',
   triggerTime: 'input_datetime.tesla_precondition_trigger_time',
   seuil1: 'input_number.tesla_seuil_1', seuil2: 'input_number.tesla_seuil_2',
   seuil3: 'input_number.tesla_seuil_3', seuil4: 'input_number.tesla_seuil_4',
   cible1: 'input_number.tesla_cible_1', cible2: 'input_number.tesla_cible_2',
   cible3: 'input_number.tesla_cible_3', cible4: 'input_number.tesla_cible_4'
 };
+
+// Notifications : uniquement par Telegram (même destinataire que les automatisations HA)
+const TELEGRAM_NOTIFY = 'notify.jarvis_patrick_leal';
+const WORK_ZONE = 'Travail';
 
 const SEATS = {
   'seat-avG': 'input_select.tesla_pref_siege_avg',
@@ -431,15 +404,14 @@ const SEAT_LEVELS = ['eteint','low','medium','high'];
 const SEAT_COLORS = { eteint:'var(--bg-raised)', low:'var(--amber-dim)', medium:'#5c3a15', high:'var(--amber)' };
 let seatState = {};
 
-let cfg = { baseUrl:'', token:'', awakeStates:'on', lat:null, lon:null,
+let cfg = { baseUrl:'', token:'', awakeStates:'on',
   seuil1:10, seuil2:17, seuil3:25, seuil4:40, cible1:25, cible2:22, cible3:20, cible4:18 };
 let climateTargetTemp = 21;
-let forecastCache = { ts:0, data:null };
 
 function loadStore(key, fallback){
   try {
     const val = localStorage.getItem(key);
-    return val ? JSON.parse(val) : fallback;
+    return val ? { ...fallback, ...JSON.parse(val) } : fallback;
   } catch(e) { return fallback; }
 }
 
@@ -453,11 +425,6 @@ let toastTimer;
 function toast(msg){
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
-}
-
-function log(msg){
-  // Journal désactivé dans l'app — on garde la fonction pour ne pas casser les appels existants.
-  console.debug(msg);
 }
 
 async function haFetch(path, opts={}){
@@ -485,6 +452,13 @@ async function callService(domain, service, data){
   return haFetch('/api/services/'+domain+'/'+service, { method:'POST', body: JSON.stringify(data) });
 }
 
+async function telegram(message, withCancel){
+  const data = { entity_id:[TELEGRAM_NOTIFY], title:'**Tesla Model Y 🚗**', message };
+  if(withCancel) data.inline_keyboard = ['Annuler:/tesla_annuler'];
+  try{ await callService('telegram_bot','send_message', data); }
+  catch(e){ console.warn('Telegram indisponible', e); }
+}
+
 function isAwake(stateObj){
   if(!stateObj) return false;
   const list = (cfg.awakeStates || 'on').split(',').map(s=>s.trim().toLowerCase());
@@ -494,55 +468,14 @@ function isAwake(stateObj){
 async function ensureAwake(){
   let s = await getState(ENT.status);
   if(isAwake(s)) return true;
-  log('Réveil de la voiture…');
   try{ await callService('button','press',{entity_id:ENT.wake}); }catch(e){}
   const start = Date.now(), timeout = 90000, interval = 6000;
   while(Date.now() - start < timeout){
     await new Promise(r=>setTimeout(r, interval));
     s = await getState(ENT.status);
-    if(isAwake(s)){ log('Voiture réveillée'); return true; }
+    if(isAwake(s)) return true;
   }
-  log('⚠ La voiture ne répond pas après '+Math.round(timeout/1000)+'s');
   return false;
-}
-
-/* Géolocalisation automatique au lancement */
-function updateLocationAuto(){
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(pos => {
-      cfg.lat = parseFloat(pos.coords.latitude.toFixed(4));
-      cfg.lon = parseFloat(pos.coords.longitude.toFixed(4));
-      saveStore('ha-config', cfg);
-      forecastCache = { ts:0, data:null };
-      updateDepartureInfo();
-    }, () => {}, { enableHighAccuracy: true, timeout: 5000 });
-  }
-}
-
-async function forecastTempAt(date){
-  if(cfg.lat==null || cfg.lon==null) return null;
-  const now = Date.now();
-  if(forecastCache.data && now - forecastCache.ts < 20*60*1000) return readForecast(forecastCache.data, date);
-  try{
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${cfg.lat}&longitude=${cfg.lon}&hourly=temperature_2m&forecast_days=2&timezone=auto`;
-    const res = await fetch(url); const data = await res.json();
-    forecastCache = { ts: now, data };
-    return readForecast(data, date);
-  }catch(e){ return null; }
-}
-
-function readForecast(data, date){
-  if(!data || !data.hourly) return null;
-  const target = new Date(date); target.setMinutes(0,0,0);
-  const iso = target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0')+'-'+String(target.getDate()).padStart(2,'0')+'T'+String(target.getHours()).padStart(2,'0')+':00';
-  const idx = data.hourly.time.indexOf(iso);
-  return idx === -1 ? null : data.hourly.temperature_2m[idx];
-}
-
-async function estimateOutsideTemp(departureDate){
-  const forecast = await forecastTempAt(departureDate || new Date());
-  if(forecast != null) return { temp: forecast, source: 'météo prévue' };
-  return { temp: 15, source: 'valeur par défaut' };
 }
 
 function paintSeat(id, level){
@@ -553,11 +486,13 @@ function paintSeat(id, level){
 }
 
 async function refreshSeats(){
-  for(const [id, entity] of Object.entries(SEATS)){
-    const s = await getState(entity);
+  const entries = Object.entries(SEATS);
+  const states = await Promise.all(entries.map(([, entity]) => getState(entity)));
+  entries.forEach(([id], i) => {
+    const s = states[i];
     const lvl = s && SEAT_LEVELS.includes(s.state) ? s.state : 'eteint';
     seatState[id] = lvl; paintSeat(id, lvl);
-  }
+  });
 }
 
 document.querySelectorAll('.seat').forEach(g=>{
@@ -571,17 +506,46 @@ document.querySelectorAll('.seat').forEach(g=>{
   });
 });
 
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+function renderPosition(tracker, arrivee){
+  const box = $('posLine');
+  if(!tracker || !tracker.state || ['unknown','unavailable'].includes(tracker.state)){
+    box.style.display = 'none'; return;
+  }
+  const st = tracker.state;
+  const label = st === 'home' ? 'À la maison' : st === 'not_home' ? 'En déplacement' : st;
+  box.style.display = '';
+  box.textContent = '📍 ' + label;
+  if(st !== WORK_ZONE) return;
+
+  const ts = arrivee && arrivee.attributes ? parseFloat(arrivee.attributes.timestamp) : NaN;
+  if(isNaN(ts)) return;
+  const arr = new Date(ts*1000), now = new Date();
+  if(arr.toDateString() !== now.toDateString()) return;
+
+  box.textContent = '📍 ' + label + ' · arrivée à ' + pad2(arr.getHours()) + ':' + pad2(arr.getMinutes());
+  const sub = document.createElement('div');
+  sub.className = 'sub';
+  sub.textContent = arr.getHours() < 10
+    ? 'Mode journée : question Telegram à 16h45 pour préparer la voiture.'
+    : 'Mode soirée : départ armé automatiquement à 18h pour 19h30.';
+  box.appendChild(sub);
+}
+
 async function refreshStatus(){
   if(!cfg.baseUrl || !cfg.token){
     $('statusText').textContent = 'à configurer'; $('statusDot').className = 'dot err';
     return;
   }
-  const [status, batt, range, inside, lockS, climate, charge, defrost, wheel, autoMsg, depAuto] = await Promise.all([
+  const [status, batt, range, inside, lockS, climate, charge, defrost, wheel, depAuto, tracker, arrivee] = await Promise.all([
     getState(ENT.status), getState(ENT.battery), getState(ENT.range), getState(ENT.inside),
     getState(ENT.lock), getState(ENT.climate), getState(ENT.charge),
-    getState(ENT.prefDefrost), getState(ENT.prefWheelHeat), getState(ENT.statusMsg), getState(ENT.depAuto)
+    getState(ENT.prefDefrost), getState(ENT.prefWheelHeat), getState(ENT.depAuto),
+    getState(ENT.tracker), getState(ENT.arrivee)
   ]);
-  if(depAuto) setArmedUI(depAuto.state === 'on');
+  if(depAuto){ setArmedUI(depAuto.state === 'on'); updateDepartureInfo(); }
+  renderPosition(tracker, arrivee);
 
   const awake = isAwake(status);
   $('statusDot').className = 'dot ' + (status ? (awake ? 'awake':'asleep') : 'err');
@@ -597,7 +561,8 @@ async function refreshStatus(){
   if(inside && !isNaN(parseFloat(inside.state))) $('insideTemp').textContent = Math.round(parseFloat(inside.state))+'°';
   if(charge && charge.state) $('chargeState').textContent = charge.state;
   if(lockS){
-    const locked = String(lockS.state).toLowerCase().includes('lock') && !String(lockS.state).toLowerCase().includes('unlock');
+    const v = String(lockS.state).toLowerCase();
+    const locked = v.includes('lock') && !v.includes('unlock');
     $('lockState').textContent = locked ? 'Fermée' : 'Ouverte';
     $('lockStateBig').textContent = locked ? 'Fermée' : 'Ouverte';
     $('lockBtn').classList.toggle('on', locked);
@@ -618,7 +583,7 @@ async function refreshStatus(){
 
 function setDepTimeToNow(){
   const now = new Date();
-  $('depTime').value = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  $('depTime').value = pad2(now.getHours())+':'+pad2(now.getMinutes());
 }
 
 async function loadDepartureFromHA(){
@@ -642,44 +607,37 @@ function setArmedUI(armed){
   $('depTime').disabled = armed;
 }
 
+// Affiche ce que Home Assistant a réellement calculé (même météo que l'automatisation).
 async function updateDepartureInfo(){
   const armed = $('disarmBtn').style.display !== 'none';
-  if(!armed){
-    $('depInfo').style.display = 'none';
-    return;
-  }
-  $('depInfo').style.display = '';
-  const [h, m] = $('depTime').value.split(':').map(Number);
-  const dep = new Date(); dep.setHours(h, m, 0, 0);
-  const est = await estimateOutsideTemp(dep);
-  let sentence = `Vous partez à <b>${$('depTime').value}</b>, il fait <b>${Math.round(est.temp)}°C</b> dehors.`;
+  const box = $('depInfo');
+  if(!armed){ box.style.display = 'none'; return; }
+  box.style.display = '';
+  if(!cfg.baseUrl || !cfg.token){ box.textContent = 'Départ à ' + $('depTime').value + '.'; return; }
 
-  if(cfg.baseUrl && cfg.token){
-    const [status, trig] = await Promise.all([ getState(ENT.statusMsg), getState(ENT.triggerTime) ]);
-    if(trig && trig.state && trig.state !== 'unknown'){
-      sentence += ` Le préchauffage démarrera vers <b>${trig.state.slice(0,5)}</b>.`;
-    } else {
-      sentence += ` Home Assistant calcule le meilleur moment pour démarrer…`;
-    }
-    if(status && status.state && status.state !== 'unknown' && /lancé|confortable|échec/.test(status.state)){
-      sentence += `<br><span style="color:var(--text-faint); font-size:11.5px;">${status.state}</span>`;
-    }
+  const [status, trig] = await Promise.all([ getState(ENT.statusMsg), getState(ENT.triggerTime) ]);
+  const ready = trig && /^\d\d:\d\d/.test(trig.state) && trig.state.slice(0,8) !== '00:00:01';
+  box.textContent = ready
+    ? 'Départ à ' + $('depTime').value + ' · le préchauffage démarrera vers ' + trig.state.slice(0,5) + '.'
+    : 'Départ à ' + $('depTime').value + ' · Home Assistant calcule le meilleur moment pour démarrer…';
+  if(status && status.state && !['unknown','unavailable',''].includes(status.state)){
+    const sub = document.createElement('div');
+    sub.className = 'sub';
+    sub.textContent = status.state;
+    box.appendChild(sub);
   }
-  $('depInfo').innerHTML = sentence;
 }
-
 
 const THRESH_FIELDS = ['seuil1','seuil2','seuil3','seuil4','cible1','cible2','cible3','cible4'];
 
 async function openSheet(){
   $('cfgUrl').value = cfg.baseUrl||''; $('cfgToken').value = cfg.token||'';
-  $('cfgLat').value = cfg.lat ?? ''; $('cfgLon').value = cfg.lon ?? '';
   THRESH_FIELDS.forEach(k => { $(k).value = cfg[k]; });
   $('sheet').classList.add('open'); $('backdrop').classList.add('open');
   if(cfg.baseUrl && cfg.token){
     try{
       const states = await Promise.all(THRESH_FIELDS.map(k => getState(ENT[k])));
-      states.forEach((s,i) => { if(s && s.state && s.state !== 'unknown') $(THRESH_FIELDS[i]).value = parseFloat(s.state); });
+      states.forEach((s,i) => { if(s && s.state && s.state !== 'unknown' && !isNaN(parseFloat(s.state))) $(THRESH_FIELDS[i]).value = parseFloat(s.state); });
     }catch(e){ /* champs locaux gardés si HA injoignable */ }
   }
 }
@@ -697,20 +655,14 @@ $('testConn').onclick = async ()=>{
   }catch(e){ toast('Échec — vérifie CORS / HTTPS'); }
 };
 
-$('useGeo').onclick = ()=>{
-  if(!navigator.geolocation){ toast('Géolocalisation indisponible'); return; }
-  navigator.geolocation.getCurrentPosition(pos=>{
-    $('cfgLat').value = pos.coords.latitude.toFixed(4); $('cfgLon').value = pos.coords.longitude.toFixed(4);
-    toast('Position récupérée');
-  }, ()=> toast('Position refusée'));
-};
-
 $('saveSettings').onclick = async ()=>{
   const newVals = {};
-  THRESH_FIELDS.forEach(k => { newVals[k] = parseFloat($(k).value); if(isNaN(newVals[k])) newVals[k] = cfg[k]; });
+  THRESH_FIELDS.forEach(k => {
+    newVals[k] = parseFloat(String($(k).value).replace(',', '.'));
+    if(isNaN(newVals[k])) newVals[k] = cfg[k];
+  });
   cfg = {
     baseUrl: $('cfgUrl').value.trim(), token: $('cfgToken').value.trim(), awakeStates:'on',
-    lat: $('cfgLat').value ? parseFloat($('cfgLat').value) : null, lon: $('cfgLon').value ? parseFloat($('cfgLon').value) : null,
     ...newVals
   };
   saveStore('ha-config', cfg);
@@ -726,19 +678,14 @@ $('saveSettings').onclick = async ()=>{
 $('climateBtn').onclick = async ()=>{
   const on = $('climateBtn').classList.contains('on');
   try{
-    if(on){ 
-      await callService('climate','set_hvac_mode',{entity_id:ENT.climate, hvac_mode:'off'}); 
-      log('Climatisation coupée'); 
+    if(on){
+      await callService('climate','set_hvac_mode',{entity_id:ENT.climate, hvac_mode:'off'});
     } else {
-      await ensureAwake();
+      toast('Démarrage…');
+      if(!(await ensureAwake())){ toast('La voiture ne répond pas'); return; }
       await callService('climate','set_temperature',{entity_id:ENT.climate, temperature: climateTargetTemp});
       await callService('climate','set_hvac_mode',{entity_id:ENT.climate, hvac_mode:'heat_cool'});
-      log('Climatisation démarrée à '+climateTargetTemp+'°C');
-      
-      await callService('notify', 'mobile_app_iphone_15_pro_de_patrick', {
-        title: 'Tesla Model Y 🚗',
-        message: 'Climatisation démarrée manuellement à ' + climateTargetTemp + '°C.'
-      });
+      telegram('Climatisation démarrée manuellement à ' + climateTargetTemp + '°C.', true);
     }
     setTimeout(refreshStatus, 3000);
   }catch(e){ toast('Commande impossible — vérifie les réglages'); }
@@ -748,7 +695,6 @@ $('lockBtn').onclick = async ()=>{
   const locked = $('lockBtn').classList.contains('on');
   try{
     await callService('lock', locked ? 'unlock' : 'lock', {entity_id: ENT.lock});
-    log(locked ? 'Déverrouillage envoyé' : 'Verrouillage envoyé');
     setTimeout(refreshStatus, 3000);
   }catch(e){ toast('Commande impossible — vérifie les réglages'); }
 };
@@ -776,18 +722,15 @@ $('wheelBtn').onclick = async ()=>{
 };
 
 /* =========================================================
-   RÉGLAGES & DÉPART PROGRAMMÉ
+   DÉPART PROGRAMMÉ
    ========================================================= */
 
-// Modification de l'heure : met SEULEMENT à jour l'input_datetime dans HA (sans déclencher le script)
+// Changer l'heure met seulement à jour l'input_datetime dans HA (sans rien déclencher)
 $('depTime').onchange = async (e) => {
   const val = e.target.value;
   if (!val) return;
   try {
-    await callService('input_datetime', 'set_datetime', {
-      entity_id: ENT.depTime,
-      time: val + ':00'
-    });
+    await callService('input_datetime', 'set_datetime', { entity_id: ENT.depTime, time: val + ':00' });
     toast('Heure enregistrée');
     updateDepartureInfo();
   } catch (err) {
@@ -795,9 +738,8 @@ $('depTime').onchange = async (e) => {
   }
 };
 
-// Bouton "Lancer le compte à rebours" = ARMEMENT manuel à usage unique.
-// Vérifie qu'une heure de départ future est réglée, puis arme dans HA.
-// L'automatisation HA se désarme elle-même une fois le préchauffage lancé (ou si l'heure est dépassée).
+// Armement à usage unique. L'automatisation HA calcule l'heure de lancement,
+// puis se désarme d'elle-même une fois le préchauffage lancé.
 async function doArm(val) {
   if (!val) { toast('Règle d\'abord une heure de départ'); return; }
   const [h, m] = val.split(':').map(Number);
@@ -806,13 +748,13 @@ async function doArm(val) {
     toast('Cette heure est déjà passée pour aujourd\'hui');
     return;
   }
-
   try {
     await callService('input_datetime', 'set_datetime', { entity_id: ENT.depTime, time: val + ':00' });
     await callService('input_boolean', 'turn_on', { entity_id: ENT.depAuto });
     setArmedUI(true);
-    log('Armé pour départ à ' + val);
     toast('Armé ✓ — préchauffage automatique programmé');
+    // Laisse à HA le temps de calculer l'heure de lancement
+    setTimeout(updateDepartureInfo, 2500);
     updateDepartureInfo();
   } catch (err) {
     toast('Échec de mise à jour Home Assistant');
@@ -821,11 +763,9 @@ async function doArm(val) {
 
 $('armBtn').onclick = () => doArm($('depTime').value);
 
-// Raccourcis "départ dans X minutes" : règlent l'heure puis arment via le même circuit
-// que le bouton principal (donc respectent le délai minimum de 15 min calculé côté HA).
 function armInMinutes(minutes) {
   const dep = new Date(Date.now() + minutes * 60000);
-  const val = String(dep.getHours()).padStart(2, '0') + ':' + String(dep.getMinutes()).padStart(2, '0');
+  const val = pad2(dep.getHours()) + ':' + pad2(dep.getMinutes());
   $('depTime').value = val;
   doArm(val);
 }
@@ -838,7 +778,6 @@ $('disarmBtn').onclick = async () => {
     await callService('input_boolean', 'turn_off', { entity_id: ENT.depAuto });
     await callService('input_datetime', 'set_datetime', { entity_id: ENT.triggerTime, time: '00:00:01' });
     setArmedUI(false);
-    log('Désarmé manuellement');
     toast('Désarmé');
     updateDepartureInfo();
   } catch (err) {
@@ -852,10 +791,9 @@ function tickClock(){ $('clock').textContent = new Date().toLocaleTimeString('fr
   cfg = loadStore('ha-config', cfg);
   setDepTimeToNow();
   tickClock(); setInterval(tickClock, 30000);
-  updateLocationAuto();
   refreshStatus(); loadDepartureFromHA();
   setInterval(refreshStatus, 45000);
-  setInterval(updateDepartureInfo, 5*60000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden){ refreshStatus(); loadDepartureFromHA(); } });
   if(!cfg.baseUrl || !cfg.token) setTimeout(openSheet, 400);
 })();
 </script>
