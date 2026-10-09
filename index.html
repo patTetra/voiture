@@ -177,6 +177,7 @@
   .hint{font-size:12px; color:var(--faint); text-align:center; margin:2px 16px 0; line-height:1.4;}
   .panel{background:var(--card); border-radius:22px 22px 0 0; margin:10px -18px calc(-1 * (var(--safe-bottom) + 40px)); padding:12px 18px calc(var(--safe-bottom) + 14px);}
   .panel-handle{width:46px; height:4px; background:var(--line); border-radius:3px; margin:0 auto 10px;}
+  #insideTemp2.reached{color:var(--green); font-weight:600;}
   .temps{text-align:center; color:var(--dim); font-size:14px; font-variant-numeric:tabular-nums;}
   .ctl{display:flex; align-items:center; justify-content:space-between; margin-top:6px;}
   .ctl-side{display:flex; flex-direction:column; align-items:center; gap:6px; width:76px; background:none; border:none; color:var(--dim);}
@@ -541,6 +542,19 @@ let seatState = {};
 let cfg = { baseUrl:'', token:'', awakeStates:'on',
   seuil1:10, seuil2:17, seuil3:25, seuil4:40, cible1:25, cible2:22, cible3:20, cible4:18 };
 let climateTargetTemp = 21;
+let lastInside = NaN, climateOn = false, hvacAction = '';
+// Température intérieure en vert quand la cible demandée est atteinte (clim en marche)
+function paintReached(){
+  const el = $('insideTemp2');
+  let ok = false;
+  if(climateOn && !isNaN(lastInside)){
+    const d = lastInside - climateTargetTemp;
+    if(/cool/i.test(hvacAction)) ok = d <= 0.5;
+    else if(/heat/i.test(hvacAction)) ok = d >= -0.5;
+    else ok = Math.abs(d) <= 0.5;
+  }
+  el.classList.toggle('reached', ok);
+}
 let lastChargeText = '';
 
 function loadStore(key, fallback){
@@ -735,6 +749,7 @@ async function refreshStatus(){
   if(inside && !isNaN(parseFloat(inside.state))){
     $('insideTemp').textContent = Math.round(parseFloat(inside.state))+'°';
     $('insideTemp2').textContent = fmtTemp(inside.state);
+    lastInside = parseFloat(inside.state);
   }
   if(weather && weather.attributes) $('outTemp').textContent = fmtTemp(weather.attributes.temperature);
   if(charge && charge.state){
@@ -764,6 +779,7 @@ async function refreshStatus(){
     liveMode = on;
     document.querySelector('.cabinbox').classList.toggle('live', on);
     $('climateBtn').classList.toggle('on', on);
+    climateOn = on; hvacAction = (climate.attributes && climate.attributes.hvac_action) || '';
     $('qClimate').classList.toggle('on', on);
     $('climateLbl').textContent = on ? 'Marche' : 'Arrêt';
     $('qClimateCap').textContent = on ? 'Marche' : 'Arrêt';
@@ -773,6 +789,7 @@ async function refreshStatus(){
       $('climateTargetShown').textContent = climateTargetTemp+'°';
     }
   }
+  paintReached();
   if(defrost) $('defrostBtn').classList.toggle('on', defrost.state === 'on');
   { const w = liveMode ? wheelReal : wheel; if(w) $('wheelBtn').classList.toggle('on', w.state === 'on'); }
   refreshSeats();
@@ -1007,7 +1024,7 @@ $('wakeBtn').onclick = async ()=>{
   refreshStatus();
 };
 
-function showTarget(){ $('climateTemp').textContent = climateTargetTemp.toFixed(1); }
+function showTarget(){ $('climateTemp').textContent = climateTargetTemp.toFixed(1); paintReached(); }
 $('tempUp').onclick = ()=>{ climateTargetTemp = Math.min(28, climateTargetTemp+0.5); showTarget(); };
 $('tempDown').onclick = ()=>{ climateTargetTemp = Math.max(16, climateTargetTemp-0.5); showTarget(); };
 
