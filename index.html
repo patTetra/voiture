@@ -290,6 +290,7 @@
       <button class="btn ghost" id="disarmBtn" style="display:none;">Désarmer</button>
       <div class="lbl">Départ rapide</div>
       <div class="quick-dep">
+        <button class="btn" id="quickM5Btn" aria-label="Avancer le départ de 5 minutes">− 5 min</button>
         <button class="btn" id="quick15Btn">15 min</button>
         <button class="btn" id="quick30Btn">30 min</button>
         <button class="btn" id="quick60Btn">1 h</button>
@@ -891,7 +892,7 @@ $('depTime').onchange = async (e) => {
 
 // Armement à usage unique. L'automatisation HA calcule l'heure de lancement,
 // puis se désarme d'elle-même une fois le préchauffage lancé.
-async function doArm(val) {
+async function doArm(val, keepMotif) {
   if (!val) { toast('Règle d\'abord une heure de départ'); return; }
   const [h, m] = val.split(':').map(Number);
   const dep = new Date(); dep.setHours(h, m, 0, 0);
@@ -900,8 +901,13 @@ async function doArm(val) {
     return;
   }
   try {
+    // Déjà armé : on coupe puis on réarme pour que Home Assistant recalcule l'heure de lancement
+    if ($('disarmBtn').style.display !== 'none') {
+      await callService('input_boolean', 'turn_off', { entity_id: ENT.depAuto });
+      await new Promise(r => setTimeout(r, 800));
+    }
     await callService('input_datetime', 'set_datetime', { entity_id: ENT.depTime, time: val + ':00' });
-    try{ await callService('input_text', 'set_value', { entity_id: ENT.motif, value: '' }); }catch(e){}
+    if (!keepMotif) { try{ await callService('input_text', 'set_value', { entity_id: ENT.motif, value: '' }); }catch(e){} }
     await callService('input_boolean', 'turn_on', { entity_id: ENT.depAuto });
     setArmedUI(true);
     toast('Armé ✓ — préchauffage automatique programmé');
@@ -921,6 +927,16 @@ function armInMinutes(minutes) {
   $('depTime').value = val;
   doArm(val);
 }
+// Avance le départ de 5 minutes (heure armée, ou celle du champ), en gardant le motif affiché
+$('quickM5Btn').onclick = () => {
+  const cur = $('depTime').value;
+  if (!cur) { toast('Règle d\'abord une heure de départ'); return; }
+  const [h, m] = cur.split(':').map(Number);
+  const dep = new Date(); dep.setHours(h, m - 5, 0, 0);
+  const val = pad2(dep.getHours()) + ':' + pad2(dep.getMinutes());
+  $('depTime').value = val;
+  doArm(val, true);
+};
 $('quick15Btn').onclick = () => armInMinutes(15);
 $('quick30Btn').onclick = () => armInMinutes(30);
 $('quick60Btn').onclick = () => armInMinutes(60);
