@@ -933,6 +933,7 @@ function ago(iso){
   const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   if(m < 1) return "à l'instant";
   if(m < 60) return 'il y a ' + m + ' min';
+  if(m < 120) return 'il y a une heure';
   if(m < 1440) return 'il y a ' + Math.round(m/60) + ' h';
   return 'il y a ' + Math.round(m/1440) + ' j';
 }
@@ -960,7 +961,7 @@ async function refreshVehicle(){
     if(st && !isNaN(parseFloat(st.state))){
       const bar = toBar(parseFloat(st.state), st.attributes && st.attributes.unit_of_measurement);
       box.querySelector('b').textContent = bar.toFixed(1) + ' bar';
-      box.querySelector('small').textContent = ago(st.last_updated);
+      box.querySelector('small').textContent = ago(st.last_reported || st.last_updated);
     }
   });
   $('trunkBtn').textContent = trunk && trunk.state === 'open' ? 'Fermer' : 'Ouvrir';
