@@ -62,7 +62,6 @@
   .vbar button svg{width:30px; height:30px; fill:currentColor;}
   .vbar button:active{color:var(--text);}
   .vbar button.on{color:var(--green);}
-  .vdiag{font-size:11px; color:var(--faint); text-align:center; margin-top:2px;}
 
 
   /* ---------- En-tête ---------- */
@@ -437,7 +436,6 @@
       <button id="vStart"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M9 2h6a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm3 3.2a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6z"/></svg><span>Démarrer</span></button>
       <button id="vVent"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4 8.5 7 5h10l3 3.5V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM7.8 7.4 6.2 9.6h11.6l-1.6-2.2z"/></svg><span>Aérer</span></button>
     </div>
-    <div class="vdiag" id="vdiag"></div>
   </section>
 
 
@@ -917,40 +915,19 @@ $('lockBtn').onclick = async ()=>{
 
 /* =========================================================
    ÉCRAN CONTRÔLES DU VÉHICULE (pneus, coffres, verrou, actions)
-   Les entités sont détectées automatiquement parmi celles de « tesla_model_y ».
+   
    ========================================================= */
-const VEH = { done:false, ent:{}, all:[] };
-const norm = t => String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-
-async function discoverVehicle(){
-  if(VEH.done) return VEH;
-  const all = await haFetch('/api/states');
-  const mine = all.filter(e => e.entity_id.includes('tesla_model_y'));
-  VEH.all = mine.map(e => e.entity_id);
-  const txt = e => norm(e.entity_id + ' ' + ((e.attributes && e.attributes.friendly_name) || ''));
-  const find = (domain, re, not) => {
-    const h = mine.find(e => e.entity_id.startsWith(domain + '.') && re.test(txt(e)) && !(not && not.test(txt(e))));
-    return h ? h.entity_id : null;
-  };
-  const tire = /(pression|pressure|tpms|pneu|tire)/;
-  const pos = {
-    FL:/avant[ _]?gauche|front[ _]?left/, FR:/avant[ _]?droit|front[ _]?right/,
-    RL:/arriere[ _]?gauche|rear[ _]?left/, RR:/arriere[ _]?droit|rear[ _]?right/
-  };
-  VEH.ent.tp = {};
-  Object.keys(pos).forEach(k => {
-    const h = mine.find(e => e.entity_id.startsWith('sensor.') && tire.test(txt(e)) && pos[k].test(txt(e)));
-    VEH.ent.tp[k] = h ? h.entity_id : null;
-  });
-  VEH.ent.frunk = find('cover', /coffre[ _]?avant|frunk|front[ _]?trunk/);
-  VEH.ent.trunk = find('cover', /coffre|trunk|hayon|liftgate/, /coffre[ _]?avant|frunk|front/);
-  VEH.ent.flash = find('button', /clignot|flash/);
-  VEH.ent.honk  = find('button', /klaxon|honk/);
-  VEH.ent.start = find('button', /demarr|keyless|sans[ _]?cle|remote[ _]?start/, /reveil|wake/);
-  VEH.ent.vent  = find('cover', /fenetre|window/) || find('button', /aer|vent/);
-  VEH.done = true;
-  return VEH;
-}
+const VEH = { done:true, all:[], ent:{
+  tp:{ FL:'sensor.tesla_model_y_pression_pneu_avant_gauche', FR:'sensor.tesla_model_y_pression_pneu_avant_droit',
+       RL:'sensor.tesla_model_y_pression_pneu_arriere_gauche', RR:'sensor.tesla_model_y_pression_pneu_arriere_droit' },
+  frunk:'cover.tesla_model_y_coffre_avant',
+  trunk:'cover.tesla_model_y_coffre_arriere',
+  flash:'button.tesla_model_y_appel_de_phares',
+  honk:'button.tesla_model_y_klaxon',
+  start:'button.tesla_model_y_conduite_sans_cle',
+  vent:'cover.tesla_model_y_aeration'
+}};
+const discoverVehicle = async () => VEH;
 
 function ago(iso){
   const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -969,7 +946,6 @@ function toBar(v, unit){
 
 async function refreshVehicle(){
   if(!cfg.baseUrl || !cfg.token) return;
-  try{ await discoverVehicle(); }catch(e){ $('vdiag').textContent = 'Home Assistant injoignable'; return; }
   const E = VEH.ent;
   const ids = { FL:E.tp.FL, FR:E.tp.FR, RL:E.tp.RL, RR:E.tp.RR };
   const keys = Object.keys(ids);
@@ -987,17 +963,7 @@ async function refreshVehicle(){
   });
   $('trunkBtn').textContent = trunk && trunk.state === 'open' ? 'Fermer' : 'Ouvrir';
   $('vVent').classList.toggle('on', !!(vent && vent.state === 'open'));
-  // entités introuvables : on le dit, et un appui copie la liste pour la diagnostiquer
-  const names = {frunk:'coffre avant', trunk:'coffre', flash:'clignoter', honk:'klaxon', start:'démarrer', vent:'aérer'};
-  const missing = Object.keys(names).filter(k => !E[k]).map(k => names[k]);
-  if(keys.some(k => !ids[k])) missing.unshift('pneus');
-  $('vdiag').textContent = missing.length ? 'Non trouvé : ' + missing.join(', ') + ' (toucher pour copier la liste)' : '';
 }
-$('vdiag').onclick = async () => {
-  try{ await navigator.clipboard.writeText(VEH.all.join('\n')); toast('Liste des entités copiée'); }
-  catch(e){ toast(VEH.all.length + ' entités Tesla détectées'); }
-};
-
 async function vehCmd(label, run){
   try{
     await discoverVehicle();
