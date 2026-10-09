@@ -51,7 +51,10 @@
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(23,213,142,.5);}70%{box-shadow:0 0 0 7px rgba(23,213,142,0);}100%{box-shadow:0 0 0 0 rgba(23,213,142,0);}}
 
   /* ---------- Batterie ---------- */
-  .batt{display:flex; align-items:center; gap:10px; margin-top:12px;}
+  .batt{display:flex; align-items:center; gap:10px; margin-top:12px; position:relative;}
+  .pinbtn{margin-left:auto; width:40px; height:40px; border-radius:50%; background:var(--card); border:none; display:flex; align-items:center; justify-content:center; color:var(--text);}
+  .pinbtn svg{width:22px; height:22px; fill:currentColor;}
+  .poppos{position:absolute; right:0; top:46px; z-index:5; max-width:290px; text-align:left; box-shadow:0 8px 24px rgba(0,0,0,.5);}
   .batt-bar{width:84px; height:26px; border-radius:6px; background:var(--card-2); position:relative; overflow:hidden; flex:none;}
   .batt-bar i{position:absolute; inset:0 auto 0 0; width:0%; background:var(--green); border-radius:6px 0 0 6px; transition:width .5s;}
   .batt-pct{font-size:22px; font-weight:600; color:var(--green); font-variant-numeric:tabular-nums;}
@@ -109,8 +112,8 @@
   .back{width:44px; height:44px; border-radius:12px; background:var(--card); border:none; display:flex; align-items:center; justify-content:center; color:var(--text);}
   .back svg{width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;}
   .cabin-wrap{display:flex; justify-content:center; margin:-6px 0 0;}
-  :root{--chrome:340px;}
-  .cabinbox{position:relative; aspect-ratio:868/1488; height:max(250px, min(620px, calc(100vh - var(--safe-top) - var(--safe-bottom) - var(--chrome)))); height:max(250px, min(620px, calc(100svh - var(--safe-top) - var(--safe-bottom) - var(--chrome))));}
+  :root{--chrome:215px;}
+  .cabinbox{position:relative; aspect-ratio:868/1488; height:max(250px, min(820px, calc(100vh - var(--safe-top) - var(--safe-bottom) - var(--chrome)))); height:max(250px, min(820px, calc(100svh - var(--safe-top) - var(--safe-bottom) - var(--chrome))));}
   .cabin-img{display:block; width:100%; height:100%; -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 6%,#000 92%,transparent 100%); mask-image:linear-gradient(to bottom,transparent 0,#000 6%,#000 92%,transparent 100%); user-select:none; -webkit-user-drag:none;}
   .cabin{position:absolute; inset:0; width:100%; height:100%; display:block;}
   .cabin .w{stroke-width:3.4;}
@@ -145,6 +148,8 @@
   .ctl-side .power path,.ctl-side .power circle{stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round;}
   .ctl-side .refresh{fill:currentColor;}
   .ctl-side.on{color:var(--green);}
+  .ctl-side.defrost svg{fill:currentColor;}
+  .ctl-side.defrost.on{color:var(--heat);}
   .ctl-side span{font-size:14px;}
   .setpoint{display:flex; align-items:center; gap:10px;}
   .setpoint .val{font-size:50px; font-weight:200; letter-spacing:-1px; font-variant-numeric:tabular-nums; min-width:150px; text-align:center;}
@@ -209,6 +214,8 @@
       <div class="batt-bar"><i id="battFill"></i></div>
       <span class="batt-pct" id="battNum">--%</span>
       <svg class="bolt" id="boltIcon" viewBox="0 0 24 24"><path d="M13 2 5 13.5h6L10 22l9-12.5h-6.2z"/></svg>
+      <button class="pinbtn" id="posBtn" aria-label="Localisation" style="display:none;"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></button>
+      <div class="chip poppos" id="posLine" style="display:none;"></div>
     </div>
     <div class="batt-sub"><span id="rangeNum">--</span> km · <span id="chargeState">état inconnu</span></div>
 
@@ -252,7 +259,6 @@
       </div>
     </div>
 
-    <div class="chip" id="posLine" style="display:none;"></div>
 
     <div class="card">
       <button class="row-link" id="rowControls">
@@ -340,7 +346,6 @@
         </svg>
       </div>
     </div>
-    <p class="hint">Touchez un siège ou le volant : réglage appliqué au prochain préchauffage.</p>
 
     <div class="panel">
       <div class="panel-handle"></div>
@@ -355,12 +360,8 @@
           <div class="val"><span id="climateTemp">21</span>°</div>
           <button class="arrow" id="tempUp" aria-label="Plus"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
         </div>
-        <div class="ctl-side" style="visibility:hidden;"></div>
+        <button class="ctl-side defrost" id="defrostBtn" aria-label="Dégivrage du véhicule"><svg viewBox="0 0 24 24"><path d="M5.6 11 7 6.8A2.2 2.2 0 0 1 9.1 5.2h5.8c.9 0 1.8.6 2.1 1.6L18.4 11H19c1.1 0 2 .9 2 2v4a1 1 0 0 1-1 1h-1v1.2c0 .5-.4.8-.8.8h-1.4c-.5 0-.8-.3-.8-.8V18H8v1.2c0 .5-.4.8-.8.8H5.8c-.5 0-.8-.3-.8-.8V18H4a1 1 0 0 1-1-1v-4c0-1.1.9-2 2-2h.6z"/></svg></button>
       </div>
-      <button class="option" id="defrostBtn">
-        <svg viewBox="0 0 24 24"><path d="M5.6 11 7 6.8A2.2 2.2 0 0 1 9.1 5.2h5.8c.9 0 1.8.6 2.1 1.6L18.4 11H19c1.1 0 2 .9 2 2v4a1 1 0 0 1-1 1h-1v1.2c0 .5-.4.8-.8.8h-1.4c-.5 0-.8-.3-.8-.8V18H8v1.2c0 .5-.4.8-.8.8H5.8c-.5 0-.8-.3-.8-.8V18H4a1 1 0 0 1-1-1v-4c0-1.1.9-2 2-2h.6z"/></svg>
-        <span>Dégivrage du véhicule</span>
-      </button>
     </div>
   </section>
 
@@ -571,11 +572,12 @@ function pad2(n){ return String(n).padStart(2,'0'); }
 function renderPosition(tracker, arrivee){
   const box = $('posLine');
   if(!tracker || !tracker.state || ['unknown','unavailable'].includes(tracker.state)){
-    box.style.display = 'none'; return;
+    box.style.display = 'none'; $('posBtn').style.display = 'none'; return;
   }
+  $('posBtn').style.display = '';
+  box.style.display = 'none';
   const st = tracker.state;
   const label = st === 'home' ? 'À la maison' : st === 'not_home' ? 'En déplacement' : st;
-  box.style.display = '';
   box.textContent = '📍 ' + label;
   if(st !== WORK_ZONE) return;
 
@@ -788,6 +790,7 @@ $('qClimate').onclick = toggleClimate;
 
 $('qCharge').onclick = () => toast(lastChargeText ? lastChargeText : 'État de charge inconnu');
 
+$('posBtn').onclick = ()=>{ const b=$('posLine'); b.style.display = b.style.display==='none' ? '' : 'none'; };
 $('lockBtn').onclick = async ()=>{
   const locked = $('lockBtn').classList.contains('on');
   try{
