@@ -941,7 +941,9 @@ function toBar(v, unit){
   if(u === 'psi') return v * 0.0689476;
   if(u === 'kpa') return v / 100;
   if(u === 'pa') return v / 100000;
-  return v;
+  if(u === 'bar') return v;
+  // unité absente : on devine d'après l'ordre de grandeur (bar ≈ 2,8 · psi ≈ 41 · kPa ≈ 280)
+  return v > 100 ? v / 100 : v > 12 ? v * 0.0689476 : v;
 }
 
 async function refreshVehicle(){
