@@ -67,8 +67,7 @@
   /* ---------- En-tête ---------- */
   .head{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
   .title{font-size:30px; font-weight:600; letter-spacing:-.4px; line-height:1.15;}
-  .head-right{display:flex; align-items:center; gap:14px; padding-top:6px;}
-  .clock{font-size:13px; color:var(--dim); font-variant-numeric:tabular-nums;}
+  .head-right{display:flex; align-items:center; gap:14px; padding-top:6px; position:relative;}
   .ico-btn{background:none; border:none; padding:4px; display:flex; color:var(--text);}
   .ico-btn svg{width:26px; height:26px; fill:currentColor;}
   .status{display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--dim); margin-top:6px;}
@@ -79,9 +78,9 @@
 
   /* ---------- Batterie ---------- */
   .batt{display:flex; align-items:center; gap:10px; margin-top:12px; position:relative;}
-  .pinbtn{margin-left:auto; width:40px; height:40px; border-radius:50%; background:var(--card); border:none; display:flex; align-items:center; justify-content:center; color:var(--text);}
+  .pinbtn{width:40px; height:40px; border-radius:50%; background:var(--card); border:none; display:flex; align-items:center; justify-content:center; color:var(--text);}
   .pinbtn svg{width:22px; height:22px; fill:currentColor;}
-  .poppos{position:absolute; right:0; top:46px; z-index:5; max-width:290px; text-align:left; box-shadow:0 8px 24px rgba(0,0,0,.5);}
+  .poppos{position:absolute; right:0; top:48px; z-index:5; width:280px; max-width:calc(100vw - 36px); text-align:left; box-shadow:0 8px 24px rgba(0,0,0,.5);}
   .batt-bar{width:84px; height:26px; border-radius:6px; background:var(--card-2); position:relative; overflow:hidden; flex:none;}
   .batt-bar i{position:absolute; inset:0 auto 0 0; width:0%; background:var(--green); border-radius:6px 0 0 6px; transition:width .5s;}
   .batt-pct{font-size:22px; font-weight:600; color:var(--green); font-variant-numeric:tabular-nums;}
@@ -241,7 +240,8 @@
         <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">chargement…</span></div>
       </div>
       <div class="head-right">
-        <span class="clock" id="clock">--:--</span>
+        <button class="pinbtn" id="posBtn" aria-label="Localisation" style="display:none;"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></button>
+        <div class="chip poppos" id="posLine" style="display:none;"></div>
         <button class="ico-btn" id="openSettings" aria-label="Réglages">
           <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z"/></svg>
         </button>
@@ -252,8 +252,6 @@
       <div class="batt-bar"><i id="battFill"></i></div>
       <span class="batt-pct" id="battNum">--%</span>
       <svg class="bolt" id="boltIcon" viewBox="0 0 24 24"><path d="M13 2 5 13.5h6L10 22l9-12.5h-6.2z"/></svg>
-      <button class="pinbtn" id="posBtn" aria-label="Localisation" style="display:none;"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></button>
-      <div class="chip poppos" id="posLine" style="display:none;"></div>
     </div>
     <div class="batt-sub"><span id="rangeNum">--</span> km · <span id="chargeState">état inconnu</span></div>
 
@@ -1105,12 +1103,10 @@ $('disarmBtn').onclick = async () => {
   }
 };
 
-function tickClock(){ $('clock').textContent = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
 
 (function init(){
   cfg = loadStore('ha-config', cfg);
   setDepTimeToNow();
-  tickClock(); setInterval(tickClock, 30000);
   refreshStatus(); loadDepartureFromHA();
   setInterval(refreshStatus, 45000);
   document.addEventListener('visibilitychange', () => { if(!document.hidden){ refreshStatus(); loadDepartureFromHA(); } });
