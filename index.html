@@ -441,6 +441,7 @@ const ENT = {
   depTime: 'input_datetime.tesla_departure_time',
   statusMsg: 'input_text.tesla_precondition_status',
   triggerTime: 'input_datetime.tesla_precondition_trigger_time',
+  motif: 'input_text.tesla_depart_motif',
   seuil1: 'input_number.tesla_seuil_1', seuil2: 'input_number.tesla_seuil_2',
   seuil3: 'input_number.tesla_seuil_3', seuil4: 'input_number.tesla_seuil_4',
   cible1: 'input_number.tesla_cible_1', cible2: 'input_number.tesla_cible_2',
@@ -724,14 +725,22 @@ async function updateDepartureInfo(){
   const box = $('depInfo');
   if(!armed){ box.style.display = 'none'; return; }
   box.style.display = '';
-  if(!cfg.baseUrl || !cfg.token){ box.textContent = 'Départ à ' + $('depTime').value + '.'; return; }
+  const hm = t => { const [h,m] = t.split(':'); return parseInt(h,10) + ' h' + (m && m!=='00' ? ' ' + m : ''); };
+  if(!cfg.baseUrl || !cfg.token){ box.textContent = 'Départ à ' + hm($('depTime').value) + '.'; return; }
 
-  const [status, trig] = await Promise.all([ getState(ENT.statusMsg), getState(ENT.triggerTime) ]);
+  const [status, trig, motif] = await Promise.all([ getState(ENT.statusMsg), getState(ENT.triggerTime), getState(ENT.motif).catch(()=>null) ]);
   const ready = trig && /^\d\d:\d\d/.test(trig.state) && trig.state.slice(0,8) !== '00:00:01';
+  // Motif (ex. « Manon commence à 9 h ») : affiché seulement s'il date d'aujourd'hui
+  let why = '';
+  if(motif && motif.state && !['unknown','unavailable',''].includes(motif.state)){
+    const ch = new Date(motif.last_changed || 0);
+    if(ch.toDateString() === new Date().toDateString()) why = motif.state.trim().replace(/[.\s]+$/,'');
+  }
   box.textContent = ready
-    ? 'Départ à ' + $('depTime').value + ' · le préchauffage démarrera vers ' + trig.state.slice(0,5) + '.'
-    : 'Départ à ' + $('depTime').value + ' · Home Assistant calcule le meilleur moment pour démarrer…';
-  if(status && status.state && !['unknown','unavailable',''].includes(status.state)){
+    ? 'Le préchauffage démarrera vers ' + hm(trig.state.slice(0,5)) + (why ? ' car ' + why : '') + '.'
+    : 'Départ à ' + hm($('depTime').value) + ' · calcul du meilleur moment pour démarrer…';
+  // Message de statut : seulement s'il signale un problème ou un résultat utile
+  if(status && /(échec|rien à faire|annul)/i.test(status.state||'')){
     const sub = document.createElement('div');
     sub.className = 'sub';
     sub.textContent = status.state;
@@ -868,6 +877,7 @@ async function doArm(val) {
   }
   try {
     await callService('input_datetime', 'set_datetime', { entity_id: ENT.depTime, time: val + ':00' });
+    try{ await callService('input_text', 'set_value', { entity_id: ENT.motif, value: '' }); }catch(e){}
     await callService('input_boolean', 'turn_on', { entity_id: ENT.depAuto });
     setArmedUI(true);
     toast('Armé ✓ — préchauffage automatique programmé');
