@@ -36,11 +36,6 @@
   .app{max-width:430px; margin:0 auto; min-height:100vh; padding:calc(var(--safe-top) + 12px) 18px calc(var(--safe-bottom) + 40px); position:relative;}
   .view{display:none;}
   .view.active{display:block;}
-  .view.from-right{animation:slideR .28s ease-out;}
-  .view.from-left{animation:slideL .28s ease-out;}
-  @keyframes slideR{from{opacity:0; transform:translateX(36px);} to{opacity:1; transform:none;}}
-  @keyframes slideL{from{opacity:0; transform:translateX(-36px);} to{opacity:1; transform:none;}}
-  @media (prefers-reduced-motion:reduce){.view.from-right,.view.from-left{animation:none;}}
 
   /* ---------- En-tête ---------- */
   .head{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
@@ -563,35 +558,11 @@ async function ensureAwake(){
 }
 
 /* ---------- Navigation entre les deux écrans ---------- */
-function showView(name, dir){
-  const v = $(name === 'home' ? 'viewHome' : 'viewControls');
-  ['viewHome','viewControls'].forEach(id => $(id).classList.remove('from-right','from-left'));
+function showView(name){
   $('viewHome').classList.toggle('active', name === 'home');
   $('viewControls').classList.toggle('active', name === 'controls');
-  if(dir) v.classList.add(dir === 'left' ? 'from-left' : 'from-right');
   window.scrollTo(0, 0);
 }
-
-// Balayage horizontal : vers la gauche = Contrôles, vers la droite = Accueil
-(function(){
-  let x0=0, y0=0, t0=0, ok=false;
-  document.addEventListener('touchstart', e => {
-    const t = e.touches[0];
-    ok = e.touches.length === 1
-      && !$('sheet').classList.contains('open')
-      && !e.target.closest('input, select, textarea, .sheet');
-    x0 = t.clientX; y0 = t.clientY; t0 = Date.now();
-  }, {passive:true});
-  document.addEventListener('touchend', e => {
-    if(!ok) return;
-    ok = false;
-    const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
-    if(Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.7 || Date.now() - t0 > 700) return;
-    const onHome = $('viewHome').classList.contains('active');
-    if(dx < 0 && onHome) showView('controls', 'right');
-    else if(dx > 0 && !onHome) showView('home', 'left');
-  }, {passive:true});
-})();
 $('goControls').onclick = () => showView('controls');
 $('rowControls').onclick = () => showView('controls');
 $('backBtn').onclick = () => showView('home');
