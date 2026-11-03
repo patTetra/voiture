@@ -10,7 +10,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);-webkit-user-select:none;user-select:none;touch-action:manipulation}
 input{-webkit-user-select:text;user-select:text}
-#map{position:absolute;inset:0}
+#map{position:absolute;inset:0;-webkit-touch-callout:none}
 button{font:inherit;color:inherit;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent;padding:0}
 button:focus-visible,input:focus-visible{outline:.1875rem solid var(--route);outline-offset:.125rem}
 svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
@@ -20,7 +20,9 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 #banner{left:1.5rem;top:1.5rem;width:28.5rem;height:8rem;border-radius:1.5rem;overflow:hidden;display:none;align-items:center}
 #banner .ic{width:8rem;height:8rem;flex-shrink:0;background:var(--route);color:#fff;display:flex;align-items:center;justify-content:center}
 #banner .tx{padding:0 1.25rem;min-width:0;display:flex;flex-direction:column;gap:.375rem}
+.dl{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:.875rem}
 #bdist{font-size:3.25rem;font-weight:700;line-height:1;letter-spacing:-.02em}
+#btime{font-size:1.75rem;font-weight:600;color:var(--muted);white-space:nowrap}
 #bstreet{font-size:1.25rem;font-weight:500;color:var(--muted);line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
 #chip{left:1.5rem;top:10.25rem;height:3.5rem;padding:0 1.25rem 0 .5rem;border-radius:1.75rem;display:none;align-items:center;gap:.75rem;font-size:1.375rem;font-weight:600}
@@ -59,6 +61,24 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 .fld label{font-size:1rem;font-weight:500;color:var(--muted)}
 .fld input{height:3.5rem;border:.125rem solid var(--line);border-radius:1rem;padding:0 1.125rem;font:inherit;font-size:1.5rem;font-weight:600;color:var(--ink);background:#fff;width:100%}
 .fld input.on{border-color:var(--route)}
+.inw{position:relative}
+.inw input{padding-right:3.5rem}
+.clr{position:absolute;right:.375rem;top:50%;transform:translateY(-50%);width:2.75rem;height:2.75rem;border-radius:50%;background:var(--bg);display:none;align-items:center;justify-content:center}
+.vias{display:flex;flex-direction:column;gap:.25rem}
+.via{display:flex;align-items:center;gap:.75rem;min-height:3.25rem;font-size:1.125rem;font-weight:600}
+.via span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fvg{display:flex;align-items:center;border-radius:1.5rem;background:var(--bg)}
+.favs .fvg button{background:transparent}
+.favs .fvg button:first-child{padding-right:.5rem}
+.favs .fvg .x{width:3rem;padding:0;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+#lpback{position:absolute;inset:0;z-index:24;display:none}
+#lp{left:50%;top:50%;transform:translate(-50%,-50%);z-index:25;width:30rem;max-width:calc(100% - 2rem);border-radius:1.75rem;padding:1.5rem;display:none;flex-direction:column;gap:1rem}
+.lph{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+#lp h2{margin:0;font-size:1.5rem;line-height:1.25;font-weight:700;overflow-wrap:anywhere}
+#lp .sub{font-size:1rem;font-weight:500;color:var(--muted);margin-top:.25rem}
+.lpact{display:flex;flex-direction:column;gap:.75rem}
+.lpb{height:3.75rem;border-radius:1.125rem;background:var(--bg);font-size:1.375rem;font-weight:600;display:flex;align-items:center;gap:.875rem;padding:0 1.25rem;text-align:left}
+.lpb.pri{background:var(--route);color:#fff}
 .fields>.ib{margin-top:1.375rem}
 .sugg{display:flex;flex-direction:column;gap:.25rem}
 .sugg button{min-height:3.5rem;padding:.5rem 1rem;border-radius:1rem;background:var(--bg);text-align:left;font-size:1.25rem;font-weight:500;line-height:1.2}
@@ -99,7 +119,7 @@ body.plan:not(.collapsed) #pill{right:1.5rem}
 
 <div id="banner" class="ui card" aria-live="polite">
   <div class="ic"><svg id="bic" class="i" width="76" height="76" viewBox="0 0 24 24" stroke-width="2.6" aria-hidden="true"></svg></div>
-  <div class="tx"><div id="bdist">–</div><div id="bstreet"></div></div>
+  <div class="tx"><div class="dl"><div id="bdist">–</div><div id="btime"></div></div><div id="bstreet"></div></div>
 </div>
 <div id="chip" class="ui card" aria-live="polite"><span class="dot"><svg id="chipic" class="i" width="24" height="24" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"></svg></span><span id="chiptx"></span></div>
 
@@ -127,16 +147,34 @@ body.plan:not(.collapsed) #pill{right:1.5rem}
   <div id="favs" class="favs"></div>
   <div class="fields">
     <div class="fcol">
-      <div class="fld"><label for="f-from">Départ</label><input id="f-from" type="text" autocomplete="off" autocorrect="off" value="Ma position"></div>
-      <div class="fld"><label for="f-to">Arrivée</label><input id="f-to" type="text" autocomplete="off" autocorrect="off" placeholder="Adresse ou lieu"></div>
+      <div class="fld"><label for="f-from">Départ</label><div class="inw"><input id="f-from" type="text" autocomplete="off" autocorrect="off" value="Ma position"><button id="c-from" class="clr" type="button" aria-label="Effacer le départ"><svg class="i" width="22" height="22" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
+      <div class="fld"><label for="f-to">Arrivée</label><div class="inw"><input id="f-to" type="text" autocomplete="off" autocorrect="off" placeholder="Adresse ou lieu"><button id="c-to" class="clr" type="button" aria-label="Effacer l'arrivée"><svg class="i" width="22" height="22" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
     </div>
     <button id="swap" class="ib round" aria-label="Inverser départ et arrivée"><svg class="i" width="24" height="24" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><path d="M8 4v16M8 20l-3-3M8 20l3-3M16 20V4M16 4l-3 3M16 4l3 3"/></svg></button>
   </div>
   <div id="sugg" class="sugg"></div>
+  <div id="vias" class="vias"></div>
   <div id="routes" class="routes"></div>
   <div class="row"><span>Alertes sur le trajet</span><button id="altog" class="sw" aria-pressed="true" aria-label="Alertes sur le trajet"><i></i></button></div>
   <button id="go" class="go" disabled><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Démarrer</button>
 </aside>
+
+<div id="lpback"></div>
+<div id="lp" class="ui card" role="dialog" aria-label="Point sur la carte">
+  <div class="lph">
+    <div style="min-width:0"><h2 id="lptitle">Point sur la carte</h2><div id="lpsub" class="sub"></div></div>
+    <button id="lp-x" class="ib round" type="button" aria-label="Fermer"><svg class="i" width="22" height="22" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div id="lpact" class="lpact">
+    <button id="lp-via" class="lpb" type="button"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Ajouter comme étape</span></button>
+    <button id="lp-dest" class="lpb" type="button"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span id="lp-dest-t">Y aller</span></button>
+    <button id="lp-fav" class="lpb" type="button"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span>Mettre en favori</span></button>
+  </div>
+  <div id="lpfavrow" class="lpact" style="display:none">
+    <div class="fld"><label for="lpname">Nom du favori</label><input id="lpname" type="text" autocomplete="off"></div>
+    <button id="lp-save" class="go" type="button" style="margin-top:0">Enregistrer</button>
+  </div>
+</div>
 
 <div id="toast" role="status"></div>
 
@@ -182,6 +220,11 @@ function fmtDur(s) {
   if (m < 60) return m + ' min';
   var h = Math.floor(m / 60), r = m % 60;
   return h + ' h ' + (r < 10 ? '0' : '') + r;
+}
+function fmtShort(s) {
+  if (s == null || isNaN(s)) return '';
+  if (s < 60) return Math.max(5, Math.round(s / 5) * 5) + ' s';
+  return fmtDur(s);
 }
 function fmtTime(d) { return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
 function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
@@ -236,7 +279,8 @@ var S = {
   routes: [], sel: 0, route: null,
   snapIdx: 0, along: 0, offCount: 0, lastReroute: 0, arrived: false,
   alerts: [], routeAlerts: [], markers: [], alertErr: false, showAlerts: lsGet('nav.alerts') !== false,
-  beeped: {}, ac: null, busy: false, alertBusy: false, geoWarned: false
+  beeped: {}, ac: null, busy: false, alertBusy: false, geoWarned: false,
+  via: [], viaMarkers: [], lastOk: false, favs: (Array.isArray(lsGet('nav.favs')) ? lsGet('nav.favs') : [])
 };
 var map, carMarker, destMarker, fromMarker, simTimer = null, simDist = 0;
 
@@ -360,6 +404,13 @@ function drawRoutes() {
       return { type: 'Feature', properties: { sel: i === S.sel ? 1 : 0 }, geometry: { type: 'LineString', coordinates: r.coords } };
     })
   });
+  S.viaMarkers.forEach(function (m) { m.remove(); });
+  S.viaMarkers = S.via.map(function (v, i) {
+    var d = document.createElement('div');
+    d.style.cssText = 'width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;border:.25rem solid #1F3A5F;color:#1F3A5F;font:700 1rem/1 Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;box-shadow:0 .25rem .75rem rgba(20,33,47,.28)';
+    d.textContent = String(i + 1);
+    return new maplibregl.Marker({ element: d }).setLngLat([v.lon, v.lat]).addTo(map);
+  });
   if (destMarker) destMarker.remove();
   if (fromMarker) fromMarker.remove();
   if (S.to) destMarker = new maplibregl.Marker({ element: pinEl('#1F3A5F'), anchor: 'bottom' }).setLngLat([S.to.lon, S.to.lat]).addTo(map);
@@ -404,10 +455,12 @@ function showSugg(list, field) {
 }
 function pick(field, s) {
   $('sugg').innerHTML = '';
-  if (field === 'from') { S.from = { lon: s.lon, lat: s.lat, label: s.label }; $('f-from').value = s.label; $('f-from').classList.add('on'); }
-  else { S.to = { lon: s.lon, lat: s.lat, label: s.label }; $('f-to').value = s.label; $('f-to').classList.add('on'); lsSet('nav.last', S.to); }
-  document.activeElement && document.activeElement.blur && document.activeElement.blur();
-  if (S.to) computeRoute();
+  if (field === 'from') {
+    S.from = { lon: s.lon, lat: s.lat, label: s.label };
+    $('f-from').value = s.label; $('f-from').classList.add('on'); syncClr();
+    blurActive();
+    if (S.to) computeRoute();
+  } else setDestination(s);
 }
 function bindField(field) {
   var inp = $('f-' + field);
@@ -417,6 +470,7 @@ function bindField(field) {
   });
   inp.addEventListener('input', function () {
     if (field === 'from') { S.from = null; inp.classList.remove('on'); } else { S.to = null; inp.classList.remove('on'); }
+    syncClr();
     clearTimeout(geoTimer);
     var q = inp.value.trim();
     if (q.length < 3) { $('sugg').innerHTML = ''; return; }
@@ -429,13 +483,30 @@ function bindField(field) {
     }, 350);
   });
   inp.addEventListener('blur', function () {
-    if (field === 'from' && !inp.value.trim()) { S.from = null; inp.value = 'Ma position'; }
+    if (field === 'from' && !inp.value.trim()) {
+      S.from = null; inp.value = 'Ma position'; syncClr();
+      if (S.to) computeRoute();
+    }
   });
 }
 bindField('from'); bindField('to');
+function syncClr() {
+  ['from', 'to'].forEach(function (f) { $('c-' + f).style.display = $('f-' + f).value ? 'flex' : 'none'; });
+}
+['from', 'to'].forEach(function (field) {
+  $('c-' + field).addEventListener('click', function () {
+    var inp = $('f-' + field);
+    clearTimeout(geoTimer); geoSeq++;
+    inp.value = ''; inp.classList.remove('on'); $('sugg').innerHTML = '';
+    if (field === 'to') { S.to = null; clearRoute(); } else { S.from = null; }
+    syncClr(); inp.focus();
+  });
+});
+syncClr();
 
 function renderFavs() {
-  var box = $('favs'), items = FAVORIS.slice(), last = lsGet('nav.last');
+  var box = $('favs'), last = lsGet('nav.last');
+  var items = FAVORIS.concat(S.favs.map(function (f, i) { return { nom: f.nom, lon: f.lon, lat: f.lat, idx: i, mine: true }; }));
   box.innerHTML = '';
   if (last && last.label && !items.some(function (f) { return f.nom === last.label; })) {
     items.push({ nom: 'Dernière : ' + last.label.split(',')[0], lon: last.lon, lat: last.lat, label: last.label });
@@ -454,7 +525,14 @@ function renderFavs() {
         pick('to', { label: f.nom, lon: s.lon, lat: s.lat });
       } catch (e) { toast('Recherche impossible pour ' + f.nom); }
     });
-    box.appendChild(b);
+    if (f.mine) {
+      var g = document.createElement('div'); g.className = 'fvg';
+      var x = document.createElement('button'); x.className = 'x'; x.type = 'button';
+      x.setAttribute('aria-label', 'Supprimer le favori ' + f.nom);
+      x.innerHTML = svg('<path d="M6 6l12 12M18 6L6 18"/>', 18, 2.4);
+      x.addEventListener('click', function () { S.favs.splice(f.idx, 1); lsSet('nav.favs', S.favs); renderFavs(); });
+      g.appendChild(b); g.appendChild(x); box.appendChild(g);
+    } else box.appendChild(b);
   });
 }
 renderFavs();
@@ -467,6 +545,7 @@ async function ors(body) {
 }
 async function computeRoute(opt) {
   opt = opt || {};
+  S.lastOk = false;
   var from = opt.from || (S.from ? [S.from.lon, S.from.lat] : S.pos);
   var to = S.to ? [S.to.lon, S.to.lat] : null;
   if (!to) return;
@@ -474,9 +553,9 @@ async function computeRoute(opt) {
   if (S.busy) return;
   S.busy = true; $('go').disabled = true;
   try {
-    var body = { coordinates: [from, to], language: 'fr', instructions: true, units: 'm' };
+    var body = { coordinates: [from].concat(S.via.map(function (v) { return [v.lon, v.lat]; }), [to]), language: 'fr', instructions: true, units: 'm' };
     var res;
-    if (!opt.keep) {
+    if (!opt.keep && !S.via.length) {
       body.alternative_routes = { target_count: 3, share_factor: 0.6, weight_factor: 1.6 };
       res = await ors(body);
       if (!res.ok) { delete body.alternative_routes; res = await ors(body); }
@@ -493,7 +572,13 @@ async function computeRoute(opt) {
     S.routes = res.j.features.map(prep);
     S.sel = 0; S.route = S.routes[0];
     S.snapIdx = 0; S.offCount = 0;
+    var vl = S.via.map(function (v) { return v.label; });
+    S.routes.forEach(function (r) { r.viaLabels = vl; });
+    S.via.forEach(function (v) { v.along = snapTo(S.route, [v.lon, v.lat], 0, S.route.coords.length - 1).along; });
+    S.arrived = false;
     drawRoutes(); renderRoutes();
+    S.lastOk = true;
+    renderVias();
     if (!opt.keep) fitRoute();
     fetchAlerts();
     $('go').disabled = false;
@@ -524,6 +609,7 @@ $('swap').addEventListener('click', function () {
   $('f-from').value = S.from ? S.from.label : 'Ma position';
   $('f-to').value = S.to ? S.to.label : '';
   $('f-from').classList.toggle('on', !!S.from); $('f-to').classList.toggle('on', !!S.to);
+  S.via.reverse(); syncClr();
   if (S.to && (S.from || S.pos)) computeRoute();
 });
 
@@ -644,6 +730,9 @@ function navStep() {
     if (g.d < s.d) s = g;
   }
   S.snapIdx = s.idx; S.along = s.along;
+  var nv = S.via.length;
+  S.via = S.via.filter(function (v) { return v.along == null || v.along - S.along > 25; });
+  if (S.via.length !== nv) drawRoutes();
   if (s.d > 60 && S.speed > 5) {
     S.offCount++;
     if (S.offCount >= 3 && Date.now() - S.lastReroute > 20000) {
@@ -666,12 +755,27 @@ function updateHud() {
   $('rest').textContent = fmtDur(left);
   $('km').textContent = fmtKm(rem);
   var st = r.steps, k = 1;
-  if (!st.length) { $('bdist').textContent = fmtDist(rem); $('bstreet').textContent = ''; return; }
+  if (!st.length) { $('bdist').textContent = fmtDist(rem); $('btime').textContent = ''; $('bstreet').textContent = ''; return; }
   while (k < st.length - 1 && r.cum[st[k].way_points[0]] <= S.along + 5) k++;
-  var step = st[Math.min(k, st.length - 1)];
+  k = Math.min(k, st.length - 1);
+  var step = st[k];
   var d = Math.max(0, r.cum[step.way_points[0]] - S.along);
+  var prev = st[k - 1], tt = null;
+  if (prev && prev.duration != null) {
+    var pa = r.cum[prev.way_points[0]], pb = r.cum[step.way_points[0]];
+    tt = pb > pa ? prev.duration * Math.min(1, d / (pb - pa)) : 0;
+  }
+  if (tt == null) tt = d / Math.max(S.speed / 3.6, 8);
   $('bdist').textContent = fmtDist(d);
-  $('bstreet').textContent = step.instruction || '';
+  $('btime').textContent = fmtShort(tt);
+  var txt = step.instruction || '';
+  if (step.type === 10 && k < st.length - 1) {
+    var gi = 0;
+    for (var q = 0; q < k; q++) if (st[q].type === 10) gi++;
+    var vlab = r.viaLabels && r.viaLabels[gi];
+    txt = 'Étape' + (vlab ? ' : ' + vlab : '');
+  }
+  $('bstreet').textContent = txt;
   $('bic').innerHTML = MAN[TYPE_IC[step.type]] || MAN.straight;
 }
 function followCamera() {
@@ -721,6 +825,135 @@ $('b-center').addEventListener('click', function () {
 });
 $('b-in').addEventListener('click', function () { map.zoomIn({ duration: 300 }); });
 $('b-out').addEventListener('click', function () { map.zoomOut({ duration: 300 }); });
+
+/* ---------- Destination, étapes, favoris ---------- */
+function blurActive() { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
+function setDestination(s) {
+  S.to = { lon: s.lon, lat: s.lat, label: s.label };
+  S.via = [];
+  $('f-to').value = s.label; $('f-to').classList.add('on'); syncClr();
+  $('sugg').innerHTML = '';
+  lsSet('nav.last', S.to);
+  blurActive();
+  document.body.classList.remove('collapsed');
+  if (S.mode === 'nav') computeRoute({ from: S.pos, keep: true }); else computeRoute();
+}
+async function addVia(s) {
+  var v = { lon: s.lon, lat: s.lat, label: s.label, along: null }, pos = S.via.length;
+  if (S.route) {
+    var a = snapTo(S.route, [v.lon, v.lat], 0, S.route.coords.length - 1).along;
+    pos = 0;
+    S.via.forEach(function (w) { if (w.along != null && w.along <= a) pos++; });
+  }
+  S.via.splice(pos, 0, v);
+  await computeRoute(S.mode === 'nav' ? { from: S.pos, keep: true } : {});
+  if (!S.lastOk) {
+    var i = S.via.indexOf(v);
+    if (i >= 0) S.via.splice(i, 1);
+    renderVias(); drawRoutes();
+  } else toast('Étape ajoutée : ' + v.label, 3500);
+}
+function renderVias() {
+  var box = $('vias');
+  box.innerHTML = '';
+  S.via.forEach(function (v, i) {
+    var row = document.createElement('div');
+    row.className = 'via';
+    var t = document.createElement('span');
+    t.textContent = 'Étape ' + (i + 1) + ' : ' + v.label;
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'ib round';
+    b.setAttribute('aria-label', 'Retirer l’étape ' + (i + 1));
+    b.innerHTML = svg('<path d="M6 6l12 12M18 6L6 18"/>', 22, 2.4);
+    b.addEventListener('click', function () {
+      S.via.splice(i, 1);
+      if (S.to) computeRoute(); else { renderVias(); drawRoutes(); }
+    });
+    row.appendChild(t); row.appendChild(b); box.appendChild(row);
+  });
+}
+function clearRoute() {
+  S.routes = []; S.route = null; S.sel = 0; S.via = []; S.routeAlerts = [];
+  $('routes').innerHTML = ''; $('go').disabled = true;
+  renderVias(); drawRoutes(); renderAlerts();
+}
+
+/* ---------- Appui long sur la carte ---------- */
+async function reverse(lon, lat) {
+  try {
+    var u = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=fr&lat=' + lat.toFixed(6) + '&lon=' + lon.toFixed(6);
+    var r = await fetch(u);
+    if (!r.ok) return null;
+    var j = await r.json(), a = j.address || {};
+    var road = a.road || a.pedestrian || a.footway || a.path || a.cycleway || a.hamlet || '';
+    var place = a.village || a.town || a.city || a.municipality || '';
+    var l1 = [a.house_number, road].filter(Boolean).join(' ');
+    return [l1, place].filter(Boolean).join(', ') || j.name || null;
+  } catch (e) { return null; }
+}
+var LP = { timer: null, x: 0, y: 0, ids: {}, open: false, lng: 0, lat: 0, label: '', at: 0, marker: null, seq: 0 };
+function lpLabel() { return LP.label || 'Point sur la carte'; }
+function lpPoint() { return { label: lpLabel(), lon: LP.lng, lat: LP.lat }; }
+function closeLP() {
+  LP.open = false; LP.seq++;
+  $('lp').style.display = 'none'; $('lpback').style.display = 'none';
+  if (LP.marker) { LP.marker.remove(); LP.marker = null; }
+}
+function openLP(cx, cy) {
+  var rc = map.getCanvasContainer().getBoundingClientRect();
+  var ll = map.unproject([cx - rc.left, cy - rc.top]);
+  LP.lng = ll.lng; LP.lat = ll.lat; LP.label = ''; LP.open = true; LP.at = Date.now();
+  var seq = ++LP.seq, hasDest = !!S.to;
+  try { if (navigator.vibrate) navigator.vibrate(30); } catch (e) {}
+  if (LP.marker) LP.marker.remove();
+  LP.marker = new maplibregl.Marker({ element: pinEl('#E8751A'), anchor: 'bottom' }).setLngLat(ll).addTo(map);
+  $('lptitle').textContent = 'Recherche de l’adresse…';
+  $('lpsub').textContent = ll.lat.toFixed(5) + ', ' + ll.lng.toFixed(5);
+  $('lp-via').style.display = hasDest ? 'flex' : 'none';
+  $('lp-via').classList.toggle('pri', hasDest);
+  $('lp-dest').classList.toggle('pri', !hasDest);
+  $('lp-dest-t').textContent = hasDest ? 'Nouvelle destination' : 'Y aller';
+  $('lpact').style.display = 'flex'; $('lpfavrow').style.display = 'none';
+  $('lpback').style.display = 'block'; $('lp').style.display = 'flex';
+  reverse(ll.lng, ll.lat).then(function (lab) {
+    if (seq !== LP.seq) return;
+    LP.label = lab || '';
+    $('lptitle').textContent = lpLabel();
+  });
+}
+(function () {
+  var box = map.getCanvasContainer();
+  function cancel() { clearTimeout(LP.timer); LP.timer = null; }
+  box.addEventListener('pointerdown', function (e) {
+    LP.ids[e.pointerId] = 1;
+    cancel();
+    if (Object.keys(LP.ids).length > 1) return;
+    LP.x = e.clientX; LP.y = e.clientY;
+    LP.timer = setTimeout(function () { LP.timer = null; openLP(LP.x, LP.y); }, 650);
+  });
+  box.addEventListener('pointermove', function (e) {
+    if (LP.timer && Math.hypot(e.clientX - LP.x, e.clientY - LP.y) > 12) cancel();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
+    box.addEventListener(t, function (e) { delete LP.ids[e.pointerId]; cancel(); });
+  });
+  box.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  map.on('dragstart', cancel);
+})();
+$('lp-x').addEventListener('click', closeLP);
+$('lpback').addEventListener('click', function () { if (Date.now() - LP.at > 450) closeLP(); });
+$('lp-dest').addEventListener('click', function () { var s = lpPoint(); closeLP(); setDestination(s); });
+$('lp-via').addEventListener('click', function () { var s = lpPoint(); closeLP(); addVia(s); });
+$('lp-fav').addEventListener('click', function () {
+  $('lpact').style.display = 'none'; $('lpfavrow').style.display = 'flex';
+  $('lpname').value = lpLabel().split(',')[0].slice(0, 30);
+});
+$('lp-save').addEventListener('click', function () {
+  var nom = $('lpname').value.trim() || lpLabel().split(',')[0].slice(0, 30);
+  S.favs.push({ nom: nom, lon: LP.lng, lat: LP.lat });
+  lsSet('nav.favs', S.favs); renderFavs(); closeLP();
+  toast('Favori « ' + nom + ' » enregistré sur cet appareil.', 3500);
+});
 
 /* ---------- Simulation (nav.html?sim) ---------- */
 function pointAt(r, d) {
