@@ -67,6 +67,7 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 .vias{display:flex;flex-direction:column;gap:.25rem}
 .via{display:flex;align-items:center;gap:.75rem;min-height:3.25rem;font-size:1.125rem;font-weight:600}
 .via span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.leg{display:flex;align-items:center;gap:.5rem;padding:.125rem 0 .125rem .25rem;font-size:1.125rem;font-weight:600;color:var(--muted)}
 .fvg{display:flex;align-items:center;border-radius:1.5rem;background:var(--bg)}
 .favs .fvg button{background:transparent}
 .favs .fvg button:first-child{padding-right:.5rem}
@@ -379,7 +380,8 @@ function prep(f) {
   var steps = [];
   (f.properties.segments || []).forEach(function (s) { (s.steps || []).forEach(function (st) { steps.push(st); }); });
   var sum = f.properties.summary || {};
-  return { coords: c, cum: cum, total: cum[c.length - 1] || sum.distance || 1, dist: sum.distance || cum[c.length - 1], dur: sum.duration || 0, steps: steps };
+  var legs = (f.properties.segments || []).map(function (s) { return { distance: s.distance || 0, duration: s.duration || 0 }; });
+  return { coords: c, cum: cum, total: cum[c.length - 1] || sum.distance || 1, dist: sum.distance || cum[c.length - 1], dur: sum.duration || 0, steps: steps, legs: legs };
 }
 function snapTo(r, p, i0, i1) {
   var c = r.coords, kx = Math.cos(p[1] * rad) * 111320, ky = 110540;
@@ -855,8 +857,18 @@ async function addVia(s) {
 }
 function renderVias() {
   var box = $('vias');
+  var legs = S.route && S.route.legs && S.route.legs.length === S.via.length + 1 ? S.route.legs : null;
+  function addLeg(i) {
+    if (!legs) return;
+    var d = document.createElement('div');
+    d.className = 'leg';
+    d.innerHTML = svg('<path d="M12 5v14M6 13l6 6 6-6"/>', 18, 2.2);
+    d.appendChild(document.createTextNode(fmtKm(legs[i].distance) + ' · ' + fmtDur(legs[i].duration)));
+    box.appendChild(d);
+  }
   box.innerHTML = '';
   S.via.forEach(function (v, i) {
+    addLeg(i);
     var row = document.createElement('div');
     row.className = 'via';
     var t = document.createElement('span');
@@ -870,6 +882,12 @@ function renderVias() {
       if (S.to) computeRoute(); else { renderVias(); drawRoutes(); }
     });
     row.appendChild(t); row.appendChild(b); box.appendChild(row);
+    if (i === S.via.length - 1 && S.to) {
+      addLeg(S.via.length);
+      var end = document.createElement('div'); end.className = 'via';
+      var et = document.createElement('span'); et.textContent = 'Arrivée : ' + S.to.label;
+      end.appendChild(et); box.appendChild(end);
+    }
   });
 }
 function clearRoute() {
