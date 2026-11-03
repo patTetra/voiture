@@ -325,13 +325,20 @@ function startGeo() {
 function onPos(p) {
   var c = p.coords, np = [c.longitude, c.latitude], prev = S.pos;
   S.pos = np;
-  if (c.speed != null && !isNaN(c.speed)) S.speed = c.speed * 3.6;
+  var now = p.timestamp || Date.now(), sp = null;
+  if (c.speed != null && !isNaN(c.speed) && c.speed >= 0) sp = c.speed * 3.6;
+  else if (prev && S.fixT && now > S.fixT) sp = hav(prev, np) / ((now - S.fixT) / 1000) * 3.6;
+  if (sp != null) S.speed = sp < 2 ? 0 : sp;
+  S.fixT = now; S.fixSeen = Date.now();
   var h = null;
   if (c.heading != null && !isNaN(c.heading) && (c.speed || 0) > 1.5) h = c.heading;
   else if (prev && hav(prev, np) > 8) h = brg(prev, np);
   if (h != null) S.heading = S.heading == null ? h : smooth(S.heading, h);
   onFix();
 }
+setInterval(function () {
+  if (!SIM && S.fixSeen && Date.now() - S.fixSeen > 5000 && S.speed) { S.speed = 0; updateSpeedUI(); }
+}, 1000);
 function onFix() {
   carMarker.setLngLat(S.pos).addTo(map);
   updateCarRot();
@@ -576,7 +583,7 @@ async function computeRoute(opt) {
   if (S.busy) return;
   S.busy = true; $('go').disabled = true;
   try {
-    var body = { coordinates: [from].concat(S.via.map(function (v) { return [v.lon, v.lat]; }), [to]), language: 'fr', instructions: true, units: 'm' };
+    var body = { coordinates: [from].concat(S.via.map(function (v) { return [v.lon, v.lat]; }), [to]), language: 'fr', instructions: true, units: 'm', preference: 'fastest' };
     if (S.moto) body.options = { avoid_features: ['highways', 'tollways'] };
     var res = null;
     if (S.moto) {
@@ -602,6 +609,7 @@ async function computeRoute(opt) {
       return;
     }
     S.routes = res.j.features.map(prep);
+    S.routes.sort(function (x, y) { return x.dur - y.dur; });
     S.sel = 0; S.route = S.routes[0];
     S.snapIdx = 0; S.offCount = 0;
     var vl = S.via.map(function (v) { return v.label; });
@@ -658,18 +666,21 @@ function parseMax(v) {
 }
 async function fetchLimit() {
   if (!S.pos || S.limBusy) return;
-  if (S.limPos && hav(S.limPos, S.pos) < 40 && Date.now() - S.limT < 20000) return;
+  if (S.limPos && hav(S.limPos, S.pos) < 25 && Date.now() - S.limT < 6000) return;
   S.limBusy = true; S.limPos = S.pos.slice(); S.limT = Date.now();
   var q = '[out:json][timeout:8];way(around:18,' + S.pos[1].toFixed(5) + ',' + S.pos[0].toFixed(5) + ')[highway][maxspeed];out tags;';
   var els = null;
   for (var i = 0; i < OVP.length && !els; i++) {
     try {
-      var r = await fetch(OVP[i], { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) });
+      var ac = new AbortController(), to = setTimeout(function () { ac.abort(); }, 3500);
+      var r = await fetch(OVP[i], { signal: ac.signal, method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) });
       if (r.ok) els = (await r.json()).elements || [];
-    } catch (e) {}
+      clearTimeout(to);
+    } catch (e) { clearTimeout(to); }
   }
   S.limBusy = false;
-  if (!els) return;
+  if (!els) { if (S.limOkPos && hav(S.limOkPos, S.pos) > 120) { S.limit = null; updateSpeedUI(); } return; }
+  S.limOkPos = S.pos.slice();
   var best = null, nm = S.curName || '';
   els.forEach(function (w) {
     var t = w.tags || {}, v = parseMax(t.maxspeed);
@@ -687,7 +698,7 @@ function updateSpeedUI() {
   l.style.display = lim != null ? 'flex' : 'none';
   if (lim != null) l.textContent = lim;
 }
-setInterval(function () { if (S.mode === 'nav' || S.firstFix) fetchLimit(); }, 8000);
+setInterval(function () { if (S.mode === 'nav' || S.firstFix) fetchLimit(); }, 3000);
 
 /* ---------- Guidage ---------- */
 function navStep() {
