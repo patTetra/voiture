@@ -45,6 +45,9 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 #rail button{width:4rem;height:4rem;border-radius:1.25rem;background:#fff;box-shadow:var(--sh);display:flex;align-items:center;justify-content:center}
 #rail button.act{background:var(--route);color:#fff}
 
+#bmenu{right:6.5rem;bottom:3.5rem;display:none;flex-direction:column;gap:.375rem;padding:.625rem;border-radius:1.5rem}
+#bmenu button{height:3.5rem;padding:0 1.5rem;border-radius:1rem;background:var(--bg);font-size:1.25rem;font-weight:600;text-align:left;white-space:nowrap}
+#bmenu button[aria-pressed="true"]{background:var(--route);color:#fff}
 #popen{left:1.5rem;top:1.5rem;width:4rem;height:4rem;border-radius:1.25rem;display:none;align-items:center;justify-content:center}
 
 #panel{left:1.5rem;top:1.5rem;bottom:1.5rem;width:25rem;border-radius:1.75rem;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;box-shadow:0 .625rem 2rem rgba(20,33,47,.18)}
@@ -61,6 +64,9 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 .inw{position:relative}
 .inw input{padding-right:3.5rem}
 .clr{position:absolute;right:.375rem;top:50%;transform:translateY(-50%);width:2.75rem;height:2.75rem;border-radius:50%;background:var(--bg);display:none;align-items:center;justify-content:center}
+.addb{display:none;height:3.5rem;border-radius:1rem;border:.125rem dashed var(--line);color:var(--route);font-size:1.25rem;font-weight:600}
+.stopbox{display:none;flex-direction:column;gap:.5rem}
+.via .mv{width:2.75rem;height:2.75rem}
 .vias{display:flex;flex-direction:column;gap:.25rem}
 .via{display:flex;align-items:center;gap:.75rem;min-height:3.25rem;font-size:1.125rem;font-weight:600}
 .via span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -127,9 +133,11 @@ body.plan.collapsed #popen{display:flex}
   <button id="stop" class="ib" aria-label="Arrêter la navigation"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
 </div>
 
+<div id="bmenu" class="ui card" role="menu" aria-label="Fond de carte"></div>
 <div id="rail" class="ui">
   <button id="b-center" aria-label="Recentrer sur ma position"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
   <button id="b-in" aria-label="Zoomer"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button id="b-layers" aria-label="Fond de carte"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 16.5l9 5 9-5"/></svg></button>
   <button id="b-out" aria-label="Dézoomer"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14"/></svg></button>
 </div>
 
@@ -145,6 +153,8 @@ body.plan.collapsed #popen{display:flex}
   </div>
   <div id="sugg" class="sugg"></div>
   <div id="vias" class="vias"></div>
+  <button id="addstop" class="addb" type="button">+ Ajouter une étape</button>
+  <div id="stopbox" class="stopbox"><div class="fld"><label for="f-via">Nouvelle étape</label><div class="inw"><input id="f-via" type="text" autocomplete="off" autocorrect="off" placeholder="Adresse ou lieu"><button id="c-via" class="clr" type="button" aria-label="Annuler l’étape"><svg class="i" width="22" height="22" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div><div id="vsugg" class="sugg"></div></div>
   <div id="routes" class="routes"></div>
   <div class="row"><span>Mode moto<small>sans autoroute, péage ni voie rapide</small></span><button id="motog" class="sw" type="button" aria-pressed="false" aria-label="Mode moto, sans autoroute, péage ni voie rapide"><i></i></button></div>
   <button id="go" class="go" disabled><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Démarrer</button>
@@ -257,18 +267,34 @@ var S = {
 var map, carMarker, destMarker, fromMarker, simTimer = null, simDist = 0;
 
 /* ---------- Carte ---------- */
+var BASEMAPS = {
+  clair: { nom: 'Clair', url: 'https://tiles.openfreemap.org/styles/positron' },
+  couleur: { nom: 'Couleurs', url: 'https://tiles.openfreemap.org/styles/liberty' },
+  routier: { nom: 'Routier', url: 'https://tiles.openfreemap.org/styles/bright' },
+  ign: { nom: 'Plan IGN', raster: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', attr: '© IGN', max: 19 },
+  sat: { nom: 'Satellite', raster: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr: 'Imagery © Esri, Maxar, Earthstar Geographics', max: 19 }
+};
+function bmStyle(k) {
+  var b = BASEMAPS[k] || BASEMAPS.clair;
+  if (b.url) return b.url;
+  return { version: 8, sources: { r: { type: 'raster', tiles: [b.raster], tileSize: 256, maxzoom: b.max, attribution: b.attr } }, layers: [{ id: 'r', type: 'raster', source: 'r' }] };
+}
+var bmKey = lsGet('nav.basemap');
+if (!BASEMAPS[bmKey]) bmKey = 'clair';
 map = new maplibregl.Map({
   container: 'map',
-  style: 'https://tiles.openfreemap.org/styles/positron',
+  style: bmStyle(bmKey),
   center: [-3.83, 48.58], zoom: 11, pitch: 0, maxPitch: 75,
   attributionControl: false
 });
 map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 addEventListener('resize', function () { fit(); map.resize(); });
 
-map.on('load', function () {
+function setupLayers() {
+  if (map.getSource('routes')) return;
   try {
-    if (map.getSource('openmaptiles')) {
+    var has3d = (map.getStyle().layers || []).some(function (l) { return l.type === 'fill-extrusion'; });
+    if (map.getSource('openmaptiles') && !has3d) {
       map.addLayer({
         id: 'b3d', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom: 15,
         paint: {
@@ -292,7 +318,30 @@ map.on('load', function () {
     layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1F3A5F', 'line-width': w(3, 7, 15, 24) } }, before);
   S.ready = true;
   if (S.routes.length) drawRoutes();
+}
+map.on('style.load', setupLayers);
+function setBasemap(k) {
+  if (!BASEMAPS[k] || k === bmKey) { closeBm(); return; }
+  bmKey = k; lsSet('nav.basemap', k);
+  S.ready = false;
+  map.setStyle(bmStyle(k));
+  renderBm(); closeBm();
+}
+function closeBm() { $('bmenu').style.display = 'none'; }
+function renderBm() {
+  var box = $('bmenu'); box.innerHTML = '';
+  Object.keys(BASEMAPS).forEach(function (k) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.textContent = BASEMAPS[k].nom;
+    b.setAttribute('aria-pressed', k === bmKey ? 'true' : 'false');
+    b.addEventListener('click', function () { setBasemap(k); });
+    box.appendChild(b);
+  });
+}
+$('b-layers').addEventListener('click', function () {
+  var m = $('bmenu'); m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
 });
+renderBm();
 map.on('dragstart', function () { S.follow = false; $('b-center').classList.add('act'); });
 map.on('rotate', updateCarRot);
 
@@ -422,7 +471,7 @@ async function geocode(q) {
   });
 }
 function showSugg(list, field) {
-  var box = $('sugg');
+  var box = field === 'via' ? $('vsugg') : $('sugg');
   box.innerHTML = '';
   list.forEach(function (s) {
     var b = document.createElement('button');
@@ -433,7 +482,8 @@ function showSugg(list, field) {
   });
 }
 function pick(field, s) {
-  $('sugg').innerHTML = '';
+  $('sugg').innerHTML = ''; $('vsugg').innerHTML = '';
+  if (field === 'via') { closeStopBox(); addVia(s, true); return; }
   if (field === 'from') {
     S.from = { lon: s.lon, lat: s.lat, label: s.label };
     $('f-from').value = s.label; $('f-from').classList.add('on'); syncClr();
@@ -815,9 +865,9 @@ function setDestination(s) {
   document.body.classList.remove('collapsed');
   if (S.mode === 'nav') computeRoute({ from: S.pos, keep: true }); else computeRoute();
 }
-async function addVia(s) {
+async function addVia(s, append) {
   var v = { lon: s.lon, lat: s.lat, label: s.label, along: null }, pos = S.via.length;
-  if (S.route) {
+  if (S.route && !append) {
     var a = snapTo(S.route, [v.lon, v.lat], 0, S.route.coords.length - 1).along;
     pos = 0;
     S.via.forEach(function (w) { if (w.along != null && w.along <= a) pos++; });
@@ -832,6 +882,7 @@ async function addVia(s) {
 }
 function renderVias() {
   var box = $('vias');
+  updateAddStop();
   var legs = S.route && S.route.legs && S.route.legs.length === S.via.length + 1 ? S.route.legs : null;
   function addLeg(i) {
     if (!legs) return;
@@ -856,7 +907,18 @@ function renderVias() {
       S.via.splice(i, 1);
       if (S.to) computeRoute(); else { renderVias(); drawRoutes(); }
     });
-    row.appendChild(t); row.appendChild(b); box.appendChild(row);
+    function mvBtn(d, path, label) {
+      var m = document.createElement('button');
+      m.type = 'button'; m.className = 'ib round mv'; m.setAttribute('aria-label', label);
+      m.innerHTML = svg(path, 20, 2.4);
+      if ((d < 0 && i === 0) || (d > 0 && i === S.via.length - 1)) { m.disabled = true; m.style.opacity = '.3'; }
+      m.addEventListener('click', function () { moveVia(i, d); });
+      return m;
+    }
+    row.appendChild(t);
+    row.appendChild(mvBtn(-1, '<path d="M6 14l6-6 6 6"/>', 'Monter l’étape ' + (i + 1)));
+    row.appendChild(mvBtn(1, '<path d="M6 10l6 6 6-6"/>', 'Descendre l’étape ' + (i + 1)));
+    row.appendChild(b); box.appendChild(row);
     if (i === S.via.length - 1 && S.to) {
       addLeg(S.via.length);
       var end = document.createElement('div'); end.className = 'via';
@@ -864,6 +926,38 @@ function renderVias() {
       end.appendChild(et); box.appendChild(end);
     }
   });
+}
+function updateAddStop() {
+  $('addstop').style.display = S.to && $('stopbox').style.display !== 'flex' ? 'block' : 'none';
+  if (!S.to) $('stopbox').style.display = 'none';
+}
+function closeStopBox() {
+  $('stopbox').style.display = 'none'; $('f-via').value = ''; $('vsugg').innerHTML = '';
+  $('c-via').style.display = 'none'; clearTimeout(geoTimer); geoSeq++;
+  $('addstop').style.display = S.to ? 'block' : 'none';
+}
+$('addstop').addEventListener('click', function () {
+  $('stopbox').style.display = 'flex'; $('addstop').style.display = 'none'; $('f-via').focus();
+});
+$('c-via').addEventListener('click', closeStopBox);
+$('f-via').addEventListener('input', function () {
+  var q = this.value.trim();
+  $('c-via').style.display = this.value ? 'flex' : 'none';
+  clearTimeout(geoTimer);
+  if (q.length < 3) { $('vsugg').innerHTML = ''; return; }
+  var seq = ++geoSeq;
+  geoTimer = setTimeout(async function () {
+    try {
+      var list = await geocode(q);
+      if (seq === geoSeq) showSugg(list, 'via');
+    } catch (e) { toast("Recherche d'adresse impossible."); }
+  }, 350);
+});
+function moveVia(i, d) {
+  var j = i + d;
+  if (j < 0 || j >= S.via.length) return;
+  var t = S.via[i]; S.via[i] = S.via[j]; S.via[j] = t;
+  if (S.to) computeRoute(); else renderVias();
 }
 function clearRoute() {
   S.routes = []; S.route = null; S.sel = 0; S.via = [];
