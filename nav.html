@@ -67,6 +67,7 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 .vias{display:flex;flex-direction:column;gap:.25rem}
 .via{display:flex;align-items:center;gap:.75rem;min-height:3.25rem;font-size:1.125rem;font-weight:600}
 .via span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row small{display:block;font-size:1rem;font-weight:500;color:var(--muted)}
 .leg{display:flex;align-items:center;gap:.5rem;padding:.125rem 0 .125rem .25rem;font-size:1.125rem;font-weight:600;color:var(--muted)}
 .fvg{display:flex;align-items:center;border-radius:1.5rem;background:var(--bg)}
 .favs .fvg button{background:transparent}
@@ -156,6 +157,7 @@ body.plan:not(.collapsed) #pill{right:1.5rem}
   <div id="sugg" class="sugg"></div>
   <div id="vias" class="vias"></div>
   <div id="routes" class="routes"></div>
+  <div class="row"><span>Mode moto<small>sans autoroute ni péage</small></span><button id="motog" class="sw" type="button" aria-pressed="false" aria-label="Mode moto, sans autoroute ni péage"><i></i></button></div>
   <div class="row"><span>Alertes sur le trajet</span><button id="altog" class="sw" aria-pressed="true" aria-label="Alertes sur le trajet"><i></i></button></div>
   <button id="go" class="go" disabled><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Démarrer</button>
 </aside>
@@ -281,7 +283,7 @@ var S = {
   snapIdx: 0, along: 0, offCount: 0, lastReroute: 0, arrived: false,
   alerts: [], routeAlerts: [], markers: [], alertErr: false, showAlerts: lsGet('nav.alerts') !== false,
   beeped: {}, ac: null, busy: false, alertBusy: false, geoWarned: false,
-  via: [], viaMarkers: [], lastOk: false, favs: (Array.isArray(lsGet('nav.favs')) ? lsGet('nav.favs') : [])
+  via: [], viaMarkers: [], lastOk: false, moto: lsGet('nav.moto') === true, favs: (Array.isArray(lsGet('nav.favs')) ? lsGet('nav.favs') : [])
 };
 var map, carMarker, destMarker, fromMarker, simTimer = null, simDist = 0;
 
@@ -545,6 +547,57 @@ async function ors(body) {
   var j = await r.json().catch(function () { return {}; });
   return { ok: r.ok, status: r.status, j: j };
 }
+/* Mode moto : moteur Valhalla (profil moto, voies rapides évitées), converti au format ORS */
+var VALHALLA = 'https://valhalla1.openstreetmap.de/route';
+var VT = { 0: 6, 1: 11, 2: 11, 3: 11, 4: 10, 5: 10, 6: 10, 7: 6, 8: 6, 9: 5, 10: 1, 11: 3, 12: 9, 13: 9, 14: 2, 15: 0, 16: 4, 17: 6, 18: 13, 19: 12, 20: 13, 21: 12, 22: 6, 23: 13, 24: 12, 25: 6, 26: 7, 27: 8, 28: 6, 29: 6, 37: 6, 38: 6 };
+function decode6(str) {
+  var i = 0, lat = 0, lon = 0, out = [];
+  while (i < str.length) {
+    var b, s = 0, r = 0;
+    do { b = str.charCodeAt(i++) - 63; r |= (b & 31) << s; s += 5; } while (b >= 32);
+    lat += (r & 1) ? ~(r >> 1) : (r >> 1);
+    s = 0; r = 0;
+    do { b = str.charCodeAt(i++) - 63; r |= (b & 31) << s; s += 5; } while (b >= 32);
+    lon += (r & 1) ? ~(r >> 1) : (r >> 1);
+    out.push([lon / 1e6, lat / 1e6]);
+  }
+  return out;
+}
+function valhallaFeature(trip) {
+  var coords = [], segments = [], dist = 0, dur = 0;
+  trip.legs.forEach(function (leg, li) {
+    var sh = decode6(leg.shape), off = coords.length ? coords.length - 1 : 0;
+    coords = coords.concat(li ? sh.slice(1) : sh);
+    var steps = (leg.maneuvers || []).map(function (m) {
+      return {
+        distance: (m.length || 0) * 1000, duration: m.time || 0,
+        type: VT[m.type] != null ? VT[m.type] : 6,
+        instruction: m.verbal_pre_transition_instruction || m.instruction || '',
+        name: (m.street_names || [])[0] || '',
+        way_points: [m.begin_shape_index + off, m.end_shape_index + off]
+      };
+    });
+    var d = ((leg.summary && leg.summary.length) || 0) * 1000, t = (leg.summary && leg.summary.time) || 0;
+    dist += d; dur += t;
+    segments.push({ distance: d, duration: t, steps: steps });
+  });
+  return { type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: { summary: { distance: dist, duration: dur }, segments: segments } };
+}
+async function valhallaRoute(pts, withAlt) {
+  var body = {
+    locations: pts.map(function (p, i) { return { lon: p[0], lat: p[1], type: (i === 0 || i === pts.length - 1) ? 'break' : 'through' }; }),
+    costing: 'motorcycle',
+    costing_options: { motorcycle: { use_highways: 0, use_tolls: 0, use_trails: 0 } },
+    directions_options: { language: 'fr-FR', units: 'kilometers' },
+    language: 'fr-FR'
+  };
+  if (withAlt && pts.length === 2) body.alternates = 2;
+  var r = await fetch(VALHALLA, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  var j = await r.json().catch(function () { return {}; });
+  if (!r.ok || !j.trip || !j.trip.legs) throw new Error('valhalla ' + r.status);
+  var trips = [j.trip].concat((j.alternates || []).map(function (a) { return a.trip; }).filter(Boolean));
+  return { ok: true, status: 200, j: { features: trips.map(valhallaFeature) } };
+}
 async function computeRoute(opt) {
   opt = opt || {};
   S.lastOk = false;
@@ -556,8 +609,17 @@ async function computeRoute(opt) {
   S.busy = true; $('go').disabled = true;
   try {
     var body = { coordinates: [from].concat(S.via.map(function (v) { return [v.lon, v.lat]; }), [to]), language: 'fr', instructions: true, units: 'm' };
-    var res;
-    if (!opt.keep && !S.via.length) {
+    if (S.moto) body.options = { avoid_features: ['highways', 'tollways'] };
+    var res = null;
+    if (S.moto) {
+      try { res = await valhallaRoute(body.coordinates, !opt.keep && !S.via.length); S.motoEngine = 'valhalla'; }
+      catch (e) {
+        res = null; S.motoEngine = 'ors';
+        if (!S.motoWarned) { S.motoWarned = true; toast('Moteur moto indisponible : seuls autoroutes et péages sont évités (pas les voies rapides).', 7000); }
+      }
+    }
+    if (res) { /* itinéraire moto Valhalla */ }
+    else if (!opt.keep && !S.via.length) {
       body.alternative_routes = { target_count: 3, share_factor: 0.6, weight_factor: 1.6 };
       res = await ors(body);
       if (!res.ok) { delete body.alternative_routes; res = await ors(body); }
@@ -567,7 +629,7 @@ async function computeRoute(opt) {
     if (!res.ok || !res.j.features || !res.j.features.length) {
       var msg = res.j && res.j.error && (res.j.error.message || res.j.error);
       if (res.status === 401 || res.status === 403) toast('Clé OpenRouteService refusée. Vérifie le secret ORS_KEY dans Cloudflare.', 8000);
-      else if (res.status === 404 || /routable|route/i.test(String(msg))) toast("Aucune route trouvée entre ces deux points.", 6000);
+      else if (res.status === 404 || /routable|route/i.test(String(msg))) toast("Aucune route trouvée entre ces deux points" + (S.moto ? ' en mode moto (sans autoroute ni péage).' : '.'), 6000);
       else toast("Calcul d'itinéraire impossible" + (typeof msg === 'string' ? ' : ' + msg : '.'), 7000);
       return;
     }
@@ -597,7 +659,7 @@ function renderRoutes() {
   S.routes.forEach(function (r, i) {
     var b = document.createElement('button');
     b.className = 'rt' + (i === S.sel ? ' sel' : '');
-    b.innerHTML = '<b>' + fmtDur(r.dur) + '</b><span class="r"><span>' + fmtKm(r.dist) + '</span><span>' + (i === 0 ? 'le plus rapide' : 'alternative') + '</span></span>';
+    b.innerHTML = '<b>' + fmtDur(r.dur) + '</b><span class="r"><span>' + fmtKm(r.dist) + '</span><span>' + (i === 0 ? (S.moto ? (S.motoEngine === 'valhalla' ? 'sans voie rapide' : 'sans autoroute') : 'le plus rapide') : 'alternative') + '</span></span>';
     b.addEventListener('click', function () {
       S.sel = i; S.route = S.routes[i]; drawRoutes(); renderRoutes(); renderAlerts(); fitRoute();
     });
@@ -971,6 +1033,15 @@ $('lp-save').addEventListener('click', function () {
   S.favs.push({ nom: nom, lon: LP.lng, lat: LP.lat });
   lsSet('nav.favs', S.favs); renderFavs(); closeLP();
   toast('Favori « ' + nom + ' » enregistré sur cet appareil.', 3500);
+});
+
+/* ---------- Mode moto ---------- */
+$('motog').setAttribute('aria-pressed', S.moto ? 'true' : 'false');
+$('motog').addEventListener('click', function () {
+  S.moto = !S.moto; lsSet('nav.moto', S.moto);
+  $('motog').setAttribute('aria-pressed', S.moto ? 'true' : 'false');
+  if (S.to) computeRoute(S.mode === 'nav' ? { from: S.pos, keep: true } : {});
+  else toast(S.moto ? 'Mode moto : sans autoroute, péage ni voie rapide.' : 'Mode moto désactivé.', 2500);
 });
 
 /* ---------- Simulation (nav.html?sim) ---------- */
