@@ -56,6 +56,8 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 
 #panel{left:1.5rem;top:1.5rem;bottom:1.5rem;width:34rem;max-width:calc(100% - 3rem);border-radius:1.75rem;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;box-shadow:0 .625rem 2rem rgba(20,33,47,.18)}
 #panel .ph{display:flex;align-items:center;justify-content:space-between}
+#panel>*{flex-shrink:0}
+.phb{display:flex;align-items:center;gap:.75rem}
 #panel h1{margin:0;font-size:2rem;font-weight:700;letter-spacing:-.01em}
 .favs{display:flex;flex-wrap:wrap;gap:.5rem}
 .favs button{height:3.5rem;padding:0 1.25rem;border-radius:1.75rem;background:var(--bg);font-size:1.375rem;font-weight:600}
@@ -72,9 +74,10 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 .stopbox{display:none;flex-direction:column;gap:.5rem}
 .via .mv{width:2.75rem;height:2.75rem}
 .vias{display:flex;flex-direction:column;gap:.25rem}
-.via{display:flex;align-items:center;gap:.75rem;min-height:3.25rem;font-size:1.125rem;font-weight:600}
+.via{display:flex;align-items:center;gap:.5rem;min-height:3.5rem;padding:0 .5rem 0 1.125rem;border:.125rem solid var(--line);border-radius:1rem;background:#fff;font-size:1.5rem;font-weight:600}
 .via span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row small{display:block;font-size:1rem;font-weight:500;color:var(--muted)}
+.vlab{font-size:1rem;font-weight:500;color:var(--muted);margin-top:.125rem}
 .leg{display:flex;align-items:center;gap:.5rem;padding:.125rem 0 .125rem .25rem;font-size:1.125rem;font-weight:600;color:var(--muted)}
 .fvg{display:flex;align-items:center;border-radius:1.5rem;background:var(--bg)}
 .favs .fvg button{background:transparent}
@@ -88,7 +91,6 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 .lpact{display:flex;flex-direction:column;gap:.75rem}
 .lpb{height:3.75rem;border-radius:1.125rem;background:var(--bg);font-size:1.375rem;font-weight:600;display:flex;align-items:center;gap:.875rem;padding:0 1.25rem;text-align:left}
 .lpb.pri{background:var(--route);color:#fff}
-.fields>.ib{margin-top:1.375rem}
 .sugg{display:flex;flex-direction:column;gap:.25rem}
 .sugg .hic{display:inline-flex;vertical-align:-.2rem;margin-right:.625rem;color:var(--muted)}
 .sugg .hclr{min-height:3rem;font-size:1.0625rem;color:var(--muted);text-align:center;background:transparent}
@@ -148,17 +150,12 @@ body.plan.collapsed #popen{display:flex}
 </div>
 
 <aside id="panel" class="ui card" aria-label="Itinéraire">
-  <div class="ph"><h1>Itinéraire</h1><button id="pclose" class="ib" aria-label="Replier le panneau"><svg class="i" width="24" height="24" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div>
+  <div class="ph"><h1>Itinéraire</h1><div class="phb"><button id="swap" class="ib round" aria-label="Inverser départ et arrivée"><svg class="i" width="24" height="24" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><path d="M8 4v16M8 20l-3-3M8 20l3-3M16 20V4M16 4l-3 3M16 4l3 3"/></svg></button><button id="pclose" class="ib" aria-label="Replier le panneau"><svg class="i" width="24" height="24" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div></div>
   <div id="favs" class="favs"></div>
-  <div class="fields">
-    <div class="fcol">
-      <div class="fld"><label for="f-from">Départ</label><div class="inw"><input id="f-from" type="text" autocomplete="off" autocorrect="off" value="Ma position"><button id="c-from" class="clr" type="button" aria-label="Effacer le départ"><svg class="i" width="22" height="22" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
-      <div class="fld"><label for="f-to">Arrivée</label><div class="inw"><input id="f-to" type="text" autocomplete="off" autocorrect="off" placeholder="Adresse ou lieu"><button id="c-to" class="clr" type="button" aria-label="Effacer l'arrivée"><svg class="i" width="22" height="22" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
-    </div>
-    <button id="swap" class="ib round" aria-label="Inverser départ et arrivée"><svg class="i" width="24" height="24" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><path d="M8 4v16M8 20l-3-3M8 20l3-3M16 20V4M16 4l-3 3M16 4l3 3"/></svg></button>
-  </div>
-  <div id="sugg" class="sugg"></div>
+  <div class="fld"><label for="f-from">Départ</label><div class="inw"><input id="f-from" type="text" autocomplete="off" autocorrect="off" value="Ma position"><button id="c-from" class="clr" type="button" aria-label="Effacer le départ"><svg class="i" width="22" height="22" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
   <div id="vias" class="vias"></div>
+  <div class="fld"><label for="f-to">Arrivée</label><div class="inw"><input id="f-to" type="text" autocomplete="off" autocorrect="off" placeholder="Adresse ou lieu"><button id="c-to" class="clr" type="button" aria-label="Effacer l'arrivée"><svg class="i" width="22" height="22" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
+  <div id="sugg" class="sugg"></div>
   <button id="addstop" class="addb" type="button">+ Ajouter une étape</button>
   <div id="stopbox" class="stopbox"><div class="fld"><label for="f-via">Nouvelle étape</label><div class="inw"><input id="f-via" type="text" autocomplete="off" autocorrect="off" placeholder="Adresse ou lieu"><button id="c-via" class="clr" type="button" aria-label="Annuler l’étape"><svg class="i" width="22" height="22" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div><div id="vsugg" class="sugg"></div></div>
   <div id="routes" class="routes"></div>
@@ -517,6 +514,7 @@ function suggWithHist(q, list) {
 }
 function showSugg(list, field, withClear) {
   var box = field === 'via' ? $('vsugg') : $('sugg');
+  if (field !== 'via') { var fl = $('f-' + field).closest('.fld'); if (fl && fl.nextSibling !== box) fl.parentNode.insertBefore(box, fl.nextSibling); }
   box.innerHTML = '';
   list.forEach(function (s) {
     var b = document.createElement('button');
@@ -962,10 +960,13 @@ function renderVias() {
   box.innerHTML = '';
   S.via.forEach(function (v, i) {
     addLeg(i);
+    var lab = document.createElement('div');
+    lab.className = 'vlab'; lab.textContent = 'Étape ' + (i + 1);
+    box.appendChild(lab);
     var row = document.createElement('div');
     row.className = 'via';
     var t = document.createElement('span');
-    t.textContent = 'Étape ' + (i + 1) + ' : ' + v.label;
+    t.textContent = v.label;
     var b = document.createElement('button');
     b.type = 'button'; b.className = 'ib round';
     b.setAttribute('aria-label', 'Retirer l’étape ' + (i + 1));
@@ -986,13 +987,8 @@ function renderVias() {
     row.appendChild(mvBtn(-1, '<path d="M6 14l6-6 6 6"/>', 'Monter l’étape ' + (i + 1)));
     row.appendChild(mvBtn(1, '<path d="M6 10l6 6 6-6"/>', 'Descendre l’étape ' + (i + 1)));
     row.appendChild(b); box.appendChild(row);
-    if (i === S.via.length - 1 && S.to) {
-      addLeg(S.via.length);
-      var end = document.createElement('div'); end.className = 'via';
-      var et = document.createElement('span'); et.textContent = 'Arrivée : ' + S.to.label;
-      end.appendChild(et); box.appendChild(end);
-    }
   });
+  if (S.via.length) addLeg(S.via.length);
 }
 function updateAddStop() {
   $('addstop').style.display = S.to && $('stopbox').style.display !== 'flex' ? 'block' : 'none';
