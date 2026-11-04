@@ -86,6 +86,8 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 .lpb.pri{background:var(--route);color:#fff}
 .fields>.ib{margin-top:1.375rem}
 .sugg{display:flex;flex-direction:column;gap:.25rem}
+.sugg .hic{display:inline-flex;vertical-align:-.2rem;margin-right:.625rem;color:var(--muted)}
+.sugg .hclr{min-height:3rem;font-size:1.0625rem;color:var(--muted);text-align:center;background:transparent}
 .sugg button{min-height:3.5rem;padding:.5rem 1rem;border-radius:1rem;background:var(--bg);text-align:left;font-size:1.25rem;font-weight:500;line-height:1.2}
 .routes{display:flex;flex-direction:column;gap:.75rem}
 .rt{height:5rem;border:.125rem solid var(--line);border-radius:1.25rem;padding:0 1.25rem;background:#fff;display:flex;align-items:center;justify-content:space-between;text-align:left}
@@ -291,42 +293,49 @@ map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-rig
 addEventListener('resize', function () { fit(); map.resize(); });
 
 function setupLayers() {
-  if (map.getSource('routes')) return;
   try {
-    var has3d = (map.getStyle().layers || []).some(function (l) { return l.type === 'fill-extrusion'; });
-    if (map.getSource('openmaptiles') && !has3d) {
-      map.addLayer({
-        id: 'b3d', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom: 15,
-        paint: {
-          'fill-extrusion-color': '#DADFE4',
-          'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 6],
-          'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-          'fill-extrusion-opacity': 0.85
-        }
-      });
+    if (map.getLayer('r-main') && map.getSource('routes')) return;
+    var layers = (map.getStyle().layers || []);
+    var has3d = layers.some(function (l) { return l.type === 'fill-extrusion'; });
+    if (map.getSource('openmaptiles') && !has3d && !map.getLayer('b3d')) {
+      try {
+        map.addLayer({
+          id: 'b3d', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom: 15,
+          paint: {
+            'fill-extrusion-color': '#DADFE4',
+            'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 6],
+            'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+            'fill-extrusion-opacity': 0.85
+          }
+        });
+      } catch (e) {}
     }
-  } catch (e) {}
-  var firstSym = (map.getStyle().layers || []).filter(function (l) { return l.type === 'symbol'; })[0];
-  var before = firstSym ? firstSym.id : undefined;
-  map.addSource('routes', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-  var w = function (a, b, c, d) { return ['interpolate', ['linear'], ['zoom'], 8, a, 13, b, 17, c, 20, d]; };
-  map.addLayer({ id: 'r-alt', type: 'line', source: 'routes', filter: ['==', ['get', 'sel'], 0],
-    layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#9AA3AD', 'line-width': w(2, 5, 10, 16) } }, before);
-  map.addLayer({ id: 'r-done', type: 'line', source: 'routes', filter: ['==', ['get', 'sel'], 2],
-    layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F3B9B4', 'line-width': w(3, 7, 15, 24) } }, before);
-  map.addLayer({ id: 'r-case', type: 'line', source: 'routes', filter: ['==', ['get', 'sel'], 1],
-    layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#FFFFFF', 'line-width': w(5, 11, 22, 34) } }, before);
-  map.addLayer({ id: 'r-main', type: 'line', source: 'routes', filter: ['==', ['get', 'sel'], 1],
-    layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#E5352B', 'line-width': w(3, 7, 15, 24) } }, before);
-  S.ready = true;
-  if (S.routes.length) drawRoutes();
+    var firstSym = layers.filter(function (l) { return l.type === 'symbol'; })[0];
+    var before = firstSym ? firstSym.id : undefined;
+    if (!map.getSource('routes')) map.addSource('routes', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    var w = function (a, b, c, d) { return ['interpolate', ['linear'], ['zoom'], 8, a, 13, b, 17, c, 20, d]; };
+    var LAY = [
+      ['r-alt', ['==', ['get', 'sel'], 0], '#9AA3AD', w(2, 5, 10, 16)],
+      ['r-done', ['==', ['get', 'sel'], 2], '#F3B9B4', w(3, 7, 15, 24)],
+      ['r-case', ['==', ['get', 'sel'], 1], '#FFFFFF', w(5, 11, 22, 34)],
+      ['r-main', ['==', ['get', 'sel'], 1], '#E5352B', w(3, 7, 15, 24)]
+    ];
+    LAY.forEach(function (L) {
+      if (map.getLayer(L[0])) return;
+      map.addLayer({ id: L[0], type: 'line', source: 'routes', filter: L[1],
+        layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': L[2], 'line-width': L[3] } }, before);
+    });
+    S.ready = true;
+    if (S.routes.length) drawRoutes();
+  } catch (e) { /* style pas encore prêt : on retentera */ }
 }
 map.on('style.load', setupLayers);
+map.on('styledata', function () { if (!S.ready || !map.getLayer('r-main')) setupLayers(); });
 function setBasemap(k) {
   if (!BASEMAPS[k] || k === bmKey) { closeBm(); return; }
   bmKey = k; lsSet('nav.basemap', k);
   S.ready = false;
-  map.setStyle(bmStyle(k));
+  map.setStyle(bmStyle(k), { diff: false });
   renderBm(); closeBm();
 }
 function closeBm() { $('bmenu').style.display = 'none'; }
@@ -485,21 +494,46 @@ async function geocode(q) {
     return { label: p.label || p.name || '', lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] };
   });
 }
-function showSugg(list, field) {
+function histGet() { var h = lsGet('nav.hist'); return Array.isArray(h) ? h : []; }
+function histAdd(s) {
+  if (!s || !s.label || s.lon == null || s.lat == null) return;
+  var h = histGet().filter(function (x) { return x.label !== s.label; });
+  h.unshift({ label: s.label, lon: s.lon, lat: s.lat });
+  lsSet('nav.hist', h.slice(0, 40));
+}
+function histFind(q, n) {
+  q = (q || '').toLowerCase();
+  return histGet().filter(function (x) { return !q || x.label.toLowerCase().indexOf(q) >= 0; }).slice(0, n || 6)
+    .map(function (x) { return { label: x.label, lon: x.lon, lat: x.lat, hist: true }; });
+}
+function suggWithHist(q, list) {
+  var h = histFind(q, 4), seen = {};
+  h.forEach(function (x) { seen[x.label] = 1; });
+  return h.concat((list || []).filter(function (x) { return !seen[x.label]; }));
+}
+function showSugg(list, field, withClear) {
   var box = field === 'via' ? $('vsugg') : $('sugg');
   box.innerHTML = '';
   list.forEach(function (s) {
     var b = document.createElement('button');
     b.setAttribute('role', 'option');
-    b.textContent = s.label;
+    if (s.hist) { var ic = document.createElement('span'); ic.className = 'hic'; ic.innerHTML = svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', 20, 2.2); b.appendChild(ic); }
+    b.appendChild(document.createTextNode(s.label));
     b.addEventListener('click', function () { pick(field, s); });
     box.appendChild(b);
   });
+  if (withClear && list.length) {
+    var c = document.createElement('button');
+    c.type = 'button'; c.className = 'hclr'; c.textContent = 'Effacer l’historique';
+    c.addEventListener('click', function () { lsSet('nav.hist', []); box.innerHTML = ''; });
+    box.appendChild(c);
+  }
 }
 function pick(field, s) {
   $('sugg').innerHTML = ''; $('vsugg').innerHTML = '';
-  if (field === 'via') { closeStopBox(); addVia(s, true); return; }
+  if (field === 'via') { histAdd(s); closeStopBox(); addVia(s, true); return; }
   if (field === 'from') {
+    histAdd(s);
     S.from = { lon: s.lon, lat: s.lat, label: s.label };
     $('f-from').value = s.label; $('f-from').classList.add('on'); syncClr();
     blurActive();
@@ -511,19 +545,20 @@ function bindField(field) {
   inp.addEventListener('focus', function () {
     activeField = field;
     if (field === 'from' && !S.from) inp.select();
+    if (!inp.value.trim() || (field === 'from' && !S.from)) { var hh = histFind('', 6); if (hh.length) showSugg(hh, field, true); }
   });
   inp.addEventListener('input', function () {
     if (field === 'from') { S.from = null; inp.classList.remove('on'); } else { S.to = null; inp.classList.remove('on'); }
     syncClr();
     clearTimeout(geoTimer);
     var q = inp.value.trim();
-    if (q.length < 3) { $('sugg').innerHTML = ''; return; }
+    if (q.length < 3) { showSugg(histFind(q, 6), field, !q); return; }
     var seq = ++geoSeq;
     geoTimer = setTimeout(async function () {
       try {
         var list = await geocode(q);
-        if (seq === geoSeq) showSugg(list, field);
-      } catch (e) { toast("Recherche d'adresse impossible. Vérifie le relais Cloudflare et la clé ORS_KEY."); }
+        if (seq === geoSeq) showSugg(suggWithHist(q, list), field);
+      } catch (e) { showSugg(histFind(q, 6), field); toast("Recherche d'adresse impossible. Vérifie le relais Cloudflare et la clé ORS_KEY."); }
     }, 350);
   });
   inp.addEventListener('blur', function () {
@@ -876,6 +911,7 @@ $('b-out').addEventListener('click', function () { map.zoomOut({ duration: 300 }
 /* ---------- Destination, étapes, favoris ---------- */
 function blurActive() { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
 function setDestination(s) {
+  histAdd(s);
   S.to = { lon: s.lon, lat: s.lat, label: s.label };
   S.via = [];
   $('f-to').value = s.label; $('f-to').classList.add('on'); syncClr();
@@ -960,16 +996,17 @@ $('addstop').addEventListener('click', function () {
   $('stopbox').style.display = 'flex'; $('addstop').style.display = 'none'; $('f-via').focus();
 });
 $('c-via').addEventListener('click', closeStopBox);
+$('f-via').addEventListener('focus', function () { if (!this.value.trim()) { var hh = histFind('', 6); if (hh.length) showSugg(hh, 'via', true); } });
 $('f-via').addEventListener('input', function () {
   var q = this.value.trim();
   $('c-via').style.display = this.value ? 'flex' : 'none';
   clearTimeout(geoTimer);
-  if (q.length < 3) { $('vsugg').innerHTML = ''; return; }
+  if (q.length < 3) { showSugg(histFind(q, 6), 'via', !q); return; }
   var seq = ++geoSeq;
   geoTimer = setTimeout(async function () {
     try {
       var list = await geocode(q);
-      if (seq === geoSeq) showSugg(list, 'via');
+      if (seq === geoSeq) showSugg(suggWithHist(q, list), 'via');
     } catch (e) { toast("Recherche d'adresse impossible."); }
   }, 350);
 });
