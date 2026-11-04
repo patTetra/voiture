@@ -22,7 +22,11 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 #banner .tx{padding:.875rem 1.25rem;min-width:0;display:flex;flex-direction:column;gap:.375rem}
 .dl{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:.875rem}
 #bdist{font-size:3.25rem;font-weight:700;line-height:1;letter-spacing:-.02em}
-#btime{font-size:1.75rem;font-weight:600;color:var(--muted);white-space:nowrap}
+#btime{font-size:3.25rem;font-weight:700;line-height:1;letter-spacing:-.02em;white-space:nowrap}
+#beta{font-size:1.125rem;font-weight:500;color:var(--muted);line-height:1}
+#banner.flash{animation:bf .7s ease-in-out infinite}
+#banner.flash #beta{color:#fff}
+@keyframes bf{0%,100%{background:#fff;color:var(--ink)}50%{background:#E5352B;color:#fff}}
 #bstreet{font-size:2.125rem;font-weight:700;color:inherit;line-height:1.15;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 
 #speed{right:1.5rem;top:1.5rem;height:6.5rem;padding:0 1.25rem;border-radius:1.75rem;display:none;align-items:center;gap:1rem;transition:background .2s,color .2s}
@@ -121,7 +125,7 @@ body.plan.collapsed #popen{display:flex}
 
 <div id="banner" class="ui card" aria-live="polite">
   <div class="ic"><svg id="bic" class="i" width="76" height="76" viewBox="0 0 24 24" stroke-width="2.6" aria-hidden="true"></svg></div>
-  <div class="tx"><div class="dl"><div id="bdist">–</div><div id="btime"></div></div><div id="bstreet"></div></div>
+  <div class="tx"><div class="dl"><div id="bdist">–</div><div id="btime"></div></div><div id="beta"></div><div id="bstreet"></div></div>
 </div>
 
 <button id="popen" class="ui card" aria-label="Ouvrir l'itinéraire"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></button>
@@ -837,7 +841,7 @@ function updateHud() {
   $('rest').textContent = fmtDur(left);
   $('km').textContent = fmtKm(rem);
   var st = r.steps, k = 1;
-  if (!st.length) { $('bdist').textContent = fmtDist(rem); $('btime').textContent = ''; $('bstreet').textContent = ''; return; }
+  if (!st.length) { $('bdist').textContent = fmtDist(rem); $('btime').textContent = ''; $('beta').textContent = ''; $('bstreet').textContent = ''; return; }
   while (k < st.length - 1 && r.cum[st[k].way_points[0]] <= S.along + 5) k++;
   k = Math.min(k, st.length - 1);
   var step = st[k];
@@ -851,6 +855,9 @@ function updateHud() {
   if (tt == null) tt = d / Math.max(S.speed / 3.6, 8);
   $('bdist').textContent = fmtDist(d);
   $('btime').textContent = fmtShort(tt);
+  $('beta').textContent = 'arrivée au carrefour ' + fmtTime(new Date(Date.now() + tt * 1000));
+  var isTurn = [0, 1, 2, 3, 4, 5, 7, 8, 9, 12, 13].indexOf(step.type) >= 0;
+  $('banner').classList.toggle('flash', isTurn && d <= Math.max(40, S.speed / 3.6 * 4));
   var txt = step.instruction || '';
   if (step.type === 10 && k < st.length - 1) {
     var gi = 0;
@@ -884,6 +891,7 @@ function setMode(m) {
     if (SIM) startSim();
   } else {
     stopSim();
+    $('banner').classList.remove('flash');
     drawRoutes();
     map.easeTo({ pitch: 0, bearing: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 700 });
     try { if (S.wl) S.wl.release(); } catch (e) {}
