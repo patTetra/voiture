@@ -54,11 +54,11 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 #bmenu button[aria-pressed="true"]{background:var(--route);color:#fff}
 #popen{left:1.5rem;top:1.5rem;width:4rem;height:4rem;border-radius:1.25rem;display:none;align-items:center;justify-content:center}
 
-#panel{left:1.5rem;top:1.5rem;bottom:1.5rem;width:25rem;border-radius:1.75rem;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;box-shadow:0 .625rem 2rem rgba(20,33,47,.18)}
+#panel{left:1.5rem;top:1.5rem;bottom:1.5rem;width:34rem;max-width:calc(100% - 3rem);border-radius:1.75rem;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;box-shadow:0 .625rem 2rem rgba(20,33,47,.18)}
 #panel .ph{display:flex;align-items:center;justify-content:space-between}
 #panel h1{margin:0;font-size:2rem;font-weight:700;letter-spacing:-.01em}
 .favs{display:flex;flex-wrap:wrap;gap:.5rem}
-.favs button{height:3rem;padding:0 1.125rem;border-radius:1.5rem;background:var(--bg);font-size:1.125rem;font-weight:600}
+.favs button{height:3.5rem;padding:0 1.25rem;border-radius:1.75rem;background:var(--bg);font-size:1.375rem;font-weight:600}
 .fields{display:flex;align-items:center;gap:.75rem}
 .fcol{flex:1;min-width:0;display:flex;flex-direction:column;gap:.75rem}
 .fld{display:flex;flex-direction:column;gap:.375rem}
@@ -92,7 +92,7 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 .sugg{display:flex;flex-direction:column;gap:.25rem}
 .sugg .hic{display:inline-flex;vertical-align:-.2rem;margin-right:.625rem;color:var(--muted)}
 .sugg .hclr{min-height:3rem;font-size:1.0625rem;color:var(--muted);text-align:center;background:transparent}
-.sugg button{min-height:3.5rem;padding:.5rem 1rem;border-radius:1rem;background:var(--bg);text-align:left;font-size:1.25rem;font-weight:500;line-height:1.2}
+.sugg button{min-height:4.25rem;padding:.625rem 1.25rem;border-radius:1rem;background:var(--bg);text-align:left;font-size:1.5rem;font-weight:500;line-height:1.2}
 .routes{display:flex;flex-direction:column;gap:.75rem}
 .rt{height:5rem;border:.125rem solid var(--line);border-radius:1.25rem;padding:0 1.25rem;background:#fff;display:flex;align-items:center;justify-content:space-between;text-align:left}
 .rt.sel{border:.1875rem solid var(--route)}
@@ -480,7 +480,7 @@ function fitRoute() {
   if (!S.route) return;
   var b = new maplibregl.LngLatBounds();
   S.route.coords.forEach(function (c) { b.extend(c); });
-  var left = document.body.classList.contains('collapsed') ? 90 : Math.round(26 * parseFloat(getComputedStyle(document.documentElement).fontSize)) + 40;
+  var left = document.body.classList.contains('collapsed') ? 90 : ($('panel').offsetWidth || 400) + 70;
   map.fitBounds(b, { padding: { top: 110, bottom: 80, left: left, right: 90 }, pitch: 0, bearing: 0, duration: 900, maxZoom: 16 });
 }
 
@@ -605,7 +605,7 @@ function renderFavs() {
           if (!r.length) { toast('Adresse introuvable : ' + f.nom); return; }
           s = { label: r[0].label, lon: r[0].lon, lat: r[0].lat };
         }
-        pick('to', { label: f.nom, lon: s.lon, lat: s.lat });
+        pick($('stopbox').style.display === 'flex' ? 'via' : 'to', { label: f.nom, lon: s.lon, lat: s.lat });
       } catch (e) { toast('Recherche impossible pour ' + f.nom); }
     });
     if (f.mine) {
@@ -855,9 +855,12 @@ function updateHud() {
   if (tt == null) tt = d / Math.max(S.speed / 3.6, 8);
   $('bdist').textContent = fmtDist(d);
   $('btime').textContent = fmtShort(tt);
-  $('beta').textContent = 'arrivée au carrefour ' + fmtTime(new Date(Date.now() + tt * 1000));
+  $('beta').textContent = fmtTime(new Date(Date.now() + tt * 1000));
   var isTurn = [0, 1, 2, 3, 4, 5, 7, 8, 9, 12, 13].indexOf(step.type) >= 0;
-  $('banner').classList.toggle('flash', isTurn && d <= Math.max(40, S.speed / 3.6 * 4));
+  var fl = isTurn && d <= Math.max(40, S.speed / 3.6 * 4);
+  $('banner').classList.toggle('flash', fl);
+  if (fl && S.vibStep !== k) { S.vibStep = k; try { if (navigator.vibrate) navigator.vibrate([250, 120, 250, 120, 250]); } catch (e) {} }
+  if (!fl && S.vibStep === k && d > 120) S.vibStep = null;
   var txt = step.instruction || '';
   if (step.type === 10 && k < st.length - 1) {
     var gi = 0;
