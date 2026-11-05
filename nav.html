@@ -56,6 +56,7 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 #bike .bv{display:flex;align-items:baseline;gap:.25rem}
 #bike b{font-size:2rem;line-height:1}
 #bike small{font-size:1rem;color:var(--muted);font-weight:500}
+body.plan:not(.collapsed) #bike{display:none!important}
 #bike.low{background:#FFE9C7}
 #bike.crit{background:#D92D20;color:#fff}
 #bike.crit small{color:#fff}
@@ -1153,6 +1154,7 @@ var BLE_SVC = '0000e0ff-3c17-d293-8e48-14fe2e4da212';
 var BLE = { dev: null, chr: null, buf: '', tries: 0 };
 function bleShow(bat, rng) {
   var card = $('bike');
+  if (bat != null || rng != null) BLE.hasBat = true;
   card.style.display = 'flex';
   if (bat != null) $('bbat').textContent = Math.round(bat);
   if (rng != null) $('brng').textContent = Math.round(rng);
@@ -1194,13 +1196,13 @@ function bleHex(v) {
 function bleOnE3(ev) {
   BLE.n = (BLE.n || 0) + 1;
   BLE.raws = (BLE.raws || []).concat('FFE3: ' + bleHex(ev.target.value)).slice(-10);
-  if (!BLE.last || (BLE.last.remaining_oil == null && BLE.last.endurance == null)) $('bikep').textContent = 'Moto connectée : ' + BLE.n + ' reçu(s) — ' + BLE.raws.join('  |  ');
+  if (!BLE.hasBat) $('bikep').textContent = 'Moto connectée : ' + BLE.n + ' reçu(s) — ' + BLE.raws.join('  |  ');
 }
 function bleOnValue(ev) {
   var v = ev.target.value;
   BLE.n = (BLE.n || 0) + 1; BLE.bytes = (BLE.bytes || 0) + (ev.target.value ? ev.target.value.byteLength : 0);
   try { bleParse(new TextDecoder().decode(v.buffer ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength) : v)); } catch (e) {}
-  if (!BLE.last || (BLE.last.remaining_oil == null && BLE.last.endurance == null)) $('bikep').textContent = 'Moto connectée : ' + BLE.n + ' reçu(s) — ' + (BLE.raws || []).join('  |  ');
+  if (!BLE.hasBat) $('bikep').textContent = 'Moto connectée : ' + BLE.n + ' reçu(s) — ' + (BLE.raws || []).join('  |  ');
 }
 async function bleLink(dev) {
   var server = await dev.gatt.connect();
