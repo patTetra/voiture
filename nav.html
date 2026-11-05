@@ -1186,6 +1186,16 @@ function bleParse(txt) {
     } catch (e) {}
   }
 }
+function bleHex(v) {
+  var u = new Uint8Array(v.buffer, v.byteOffset, v.byteLength), h = [];
+  for (var i = 0; i < u.length; i++) h.push((u[i] < 16 ? '0' : '') + u[i].toString(16).toUpperCase());
+  return h.join(' ');
+}
+function bleOnE3(ev) {
+  BLE.n = (BLE.n || 0) + 1;
+  BLE.raws = (BLE.raws || []).concat('FFE3: ' + bleHex(ev.target.value)).slice(-10);
+  if (!BLE.last || (BLE.last.remaining_oil == null && BLE.last.endurance == null)) $('bikep').textContent = 'Moto connectée : ' + BLE.n + ' reçu(s) — ' + BLE.raws.join('  |  ');
+}
 function bleOnValue(ev) {
   var v = ev.target.value;
   BLE.n = (BLE.n || 0) + 1; BLE.bytes = (BLE.bytes || 0) + (ev.target.value ? ev.target.value.byteLength : 0);
@@ -1198,6 +1208,13 @@ async function bleLink(dev) {
   var chr = await svc.getCharacteristic(0xFFE2);
   chr.addEventListener('characteristicvaluechanged', bleOnValue);
   await chr.startNotifications();
+  try {
+    var c3 = await svc.getCharacteristic(0xFFE3);
+    c3.addEventListener('characteristicvaluechanged', bleOnE3);
+    await c3.startNotifications();
+    var r3 = await c3.readValue();
+    BLE.raws = (BLE.raws || []).concat('FFE3 lu: ' + bleHex(r3)).slice(-10);
+  } catch (e) { BLE.raws = (BLE.raws || []).concat('FFE3 indisponible: ' + ((e && e.message) || e)).slice(-10); }
   BLE.chr = chr; BLE.tries = 0;
   if (!BLE.last) bleShow(null, null);
   $('b-bike').setAttribute('aria-pressed', 'true');
