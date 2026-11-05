@@ -104,6 +104,8 @@ body.plan:not(.collapsed) #bike{display:none!important}
 .lpb{height:3.75rem;border-radius:1.125rem;background:var(--bg);font-size:1.375rem;font-weight:600;display:flex;align-items:center;gap:.875rem;padding:0 1.25rem;text-align:left}
 .lpb.pri{background:var(--route);color:#fff}
 .sugg{display:flex;flex-direction:column;gap:.25rem}
+.rt .bt{font-size:1.0625rem;font-weight:600;color:var(--muted)}
+.rt .bt.warn{color:#D92D20}
 .sugg .hic{display:inline-flex;vertical-align:-.2rem;margin-right:.625rem;color:var(--muted)}
 .sugg .hclr{min-height:3rem;font-size:1.0625rem;color:var(--muted);text-align:center;background:transparent}
 .sugg button{min-height:4.25rem;padding:.625rem 1.25rem;border-radius:1rem;background:var(--bg);text-align:left;font-size:1.5rem;font-weight:500;line-height:1.2}
@@ -406,6 +408,7 @@ function onPos(p) {
   if (c.speed != null && !isNaN(c.speed) && c.speed >= 0) sp = c.speed * 3.6;
   else if (prev && S.fixT && now > S.fixT) sp = hav(prev, np) / ((now - S.fixT) / 1000) * 3.6;
   if (sp != null) S.speed = sp < 2 ? 0 : sp;
+  if (prev && c.accuracy < 40) { var inc = hav(prev, np); if (inc > 3 && inc < 300) rgGps(inc / 1000, S.speed); }
   S.fixT = now; S.fixSeen = Date.now();
   var h = null;
   if (c.heading != null && !isNaN(c.heading) && (c.speed || 0) > 1.5) h = c.heading;
@@ -745,13 +748,20 @@ async function computeRoute(opt) {
     if (S.route) $('go').disabled = false;
   }
 }
+function arrTxt(r) {
+  if (BLE.bat == null) return '';
+  var u = rgRouteUse(r);
+  if (u == null) return '';
+  var arr = BLE.bat - u, low = arr < 8;
+  return '<span class="bt' + (low ? ' warn' : '') + '">' + (arr < 0 ? 'batterie insuffisante' : 'arrivée avec ≈ ' + Math.round(arr) + ' %') + '</span>';
+}
 function renderRoutes() {
   var box = $('routes');
   box.innerHTML = '';
   S.routes.forEach(function (r, i) {
     var b = document.createElement('button');
     b.className = 'rt' + (i === S.sel ? ' sel' : '');
-    b.innerHTML = '<b>' + fmtDur(r.dur) + '</b><span class="r"><span>' + fmtKm(r.dist) + '</span><span>' + (i === 0 ? (S.moto ? (S.motoEngine === 'valhalla' ? 'sans voie rapide' : 'sans autoroute') : 'le plus rapide') : 'alternative') + '</span></span>';
+    b.innerHTML = '<b>' + fmtDur(r.dur) + '</b><span class="r"><span>' + fmtKm(r.dist) + '</span><span>' + (i === 0 ? (S.moto ? (S.motoEngine === 'valhalla' ? 'sans voie rapide' : 'sans autoroute') : 'le plus rapide') : 'alternative') + '</span>' + arrTxt(r) + '</span>';
     b.addEventListener('click', function () {
       S.sel = i; S.route = S.routes[i]; drawRoutes(); renderRoutes(); fitRoute();
     });
@@ -1152,19 +1162,81 @@ function stopSim() { if (simTimer) { clearInterval(simTimer); simTimer = null; }
 /* ---------- Moto : batterie et autonomie en Bluetooth (Bluefy / Chrome Android) ---------- */
 var BLE_SVC = '0000e0ff-3c17-d293-8e48-14fe2e4da212';
 var BLE = { dev: null, chr: null, buf: '', tries: 0 };
-function bleShow(bat, rng) {
-  var card = $('bike');
-  if (bat != null || rng != null) BLE.hasBat = true;
-  card.style.display = 'flex';
-  if (bat != null) $('bbat').textContent = Math.round(bat);
-  if (rng != null) $('brng').textContent = Math.round(rng);
-  var bp = $('bikep');
-  bp.style.display = 'flex';
-  bp.className = 'bikep' + (bat != null && bat <= 10 ? ' crit' : (bat != null && bat <= 20 ? ' low' : ''));
-  bp.textContent = bat == null && rng == null ? 'Moto connectée, en attente des données…' : 'Moto : ' + (bat != null ? Math.round(bat) + ' %' : '--') + (rng != null ? ' · ' + Math.round(rng) + ' km d’autonomie' : '');
-  card.classList.toggle('crit', bat != null && bat <= 10);
-  card.classList.toggle('low', bat != null && bat > 10 && bat <= 20);
+/* Autonomie estimée : consommation réelle (km parcourus par % de batterie), apprise au fil des trajets */
+var RG = { dist: 0, gpsSince: 0, gStep: 0, wStep: 0, lastOdo: null, soc: null, mark: 0, open: false };
+var RGD = (function () { var d = lsGet('nav.range'); return d && Array.isArray(d.steps) ? d : { steps: [] }; })();
+function rgGps(inc, v) { RG.dist += inc; RG.gpsSince += inc; RG.gStep += inc; RG.wStep += inc * (v || 0) * (v || 0); }
+function rgOdo(km) {
+  if (RG.lastOdo != null) { var d = km - RG.lastOdo; if (d >= 0 && d < 10) RG.dist += d - RG.gpsSince; }
+  RG.gpsSince = 0; RG.lastOdo = km;
 }
+function rgSoc(soc) {
+  if (RG.soc == null) { RG.soc = soc; return; }
+  if (soc > RG.soc) { RG.soc = soc; RG.open = false; return; }
+  if (soc < RG.soc) {
+    var drop = RG.soc - soc;
+    if (RG.open) {
+      var km = RG.dist - RG.mark, per = km / drop;
+      if (per >= 0.3 && per <= 6) { RGD.steps.push({ km: +km.toFixed(2), pct: drop, g: +RG.gStep.toFixed(3), w: +RG.wStep.toFixed(1) }); RGD.steps = RGD.steps.slice(-80); lsSet('nav.range', RGD); }
+    }
+    RG.open = true; RG.mark = RG.dist; RG.gStep = 0; RG.wStep = 0; RG.soc = soc;
+  }
+}
+function rgInfo() {
+  var st = RGD.steps.slice(-20), km = 0, pct = 0;
+  st.forEach(function (x) { km += x.km; pct += x.pct; });
+  return { pct: pct, perPct: pct >= 3 ? km / pct : null };
+}
+/* Modèle : % de batterie par km = c0 + c2 × v² (roulage + résistance de l'air), ajusté sur tes mesures */
+function rgModel() {
+  var st = RGD.steps.slice(-40).filter(function (x) { return x.g > 0.2 && x.w != null; });
+  if (st.length < 5) return null;
+  var Sdd = 0, SdW = 0, SWW = 0, Sdp = 0, SWp = 0, vmin = 1e9, vmax = 0;
+  st.forEach(function (x) {
+    var v2 = x.w / x.g, W = v2 * x.km, v = Math.sqrt(v2);
+    Sdd += x.km * x.km; SdW += x.km * W; SWW += W * W; Sdp += x.km * x.pct; SWp += W * x.pct;
+    vmin = Math.min(vmin, v); vmax = Math.max(vmax, v);
+  });
+  var det = Sdd * SWW - SdW * SdW, c0, c2;
+  if (vmax - vmin < 15 || det < 1e-4 * Sdd * SWW) return { c0: Sdp / Sdd, c2: 0, n: st.length };
+  c0 = (Sdp * SWW - SWp * SdW) / det; c2 = (Sdd * SWp - SdW * Sdp) / det;
+  if (c2 < 0) { c2 = 0; c0 = Sdp / Sdd; } else if (c0 < 0) { c0 = 0; c2 = SWp / SWW; }
+  return { c0: c0, c2: c2, n: st.length };
+}
+function rgRouteUse(r) {
+  var m = rgModel(), use = 0;
+  if (m && (m.c0 > 0 || m.c2 > 0)) {
+    (r.steps || []).forEach(function (st) {
+      var d = (st.distance || 0) / 1000, t = st.duration || 0;
+      if (d <= 0) return;
+      var v = t > 0 ? Math.min(130, d / (t / 3600)) : 50;
+      use += d * (m.c0 + m.c2 * v * v);
+    });
+    return use;
+  }
+  var info = rgInfo();
+  return info.perPct ? (r.dist / 1000) / info.perPct : null;
+}
+function bleShow(bat, motoRng) {
+  var card = $('bike'), bp = $('bikep');
+  card.style.display = 'flex'; bp.style.display = 'flex';
+  if (bat != null) { BLE.bat = bat; BLE.hasBat = true; BLE.t = Date.now(); $('bbat').textContent = Math.round(bat); }
+  if (motoRng != null) BLE.motoRng = motoRng;
+  var info = rgInfo(), b = BLE.bat;
+  var est = b != null && info.perPct != null ? b * info.perPct : null;
+  $('brng').textContent = est != null ? Math.round(est) : '--';
+  var cls = b != null && b <= 10 ? 'crit' : (b != null && b <= 20 ? 'low' : '');
+  bp.className = 'bikep ' + cls;
+  card.classList.toggle('crit', cls === 'crit');
+  card.classList.toggle('low', cls === 'low');
+  if (bat != null && S.routes && S.routes.length) renderRoutes();
+  if (b == null) { bp.textContent = 'Moto connectée, en attente des données…'; return; }
+  var ago = BLE.t ? Math.round((Date.now() - BLE.t) / 1000) : null;
+  bp.textContent = 'Moto : ' + Math.round(b) + ' % · ' +
+    (est != null ? 'autonomie estimée ≈ ' + Math.round(est) + ' km (' + info.perPct.toFixed(2).replace('.', ',') + ' km par %)' : 'autonomie : calibrage en cours (' + Math.min(info.pct, 3) + '/3 % mesurés)') +
+    (BLE.motoRng != null ? ' · moto : ' + BLE.motoRng + ' km' : '') + (ago != null ? ' · maj il y a ' + ago + ' s' : '');
+}
+setInterval(function () { if (BLE.hasBat) bleShow(null, null); }, 5000);
 function bleParse(txt) {
   BLE.buf += txt;
   if (BLE.buf.length > 4000) BLE.buf = BLE.buf.slice(-1000);
@@ -1184,6 +1256,8 @@ function bleParse(txt) {
     try {
       var o = JSON.parse(raw);
       BLE.last = o;
+      if (o.total != null && o.item === 2) rgOdo(+o.total / 10);
+      if (o.remaining_oil != null) rgSoc(+o.remaining_oil);
       if (o.remaining_oil != null || o.endurance != null) bleShow(o.remaining_oil != null ? +o.remaining_oil : null, o.endurance != null ? +o.endurance : null);
     } catch (e) {}
   }
@@ -1212,13 +1286,14 @@ async function bleLink(dev) {
   await chr.startNotifications();
   try {
     var c3 = await svc.getCharacteristic(0xFFE3);
+    BLE.c3 = c3;
     c3.addEventListener('characteristicvaluechanged', bleOnE3);
     await c3.startNotifications();
     var r3 = await c3.readValue();
     BLE.raws = (BLE.raws || []).concat('FFE3 lu: ' + bleHex(r3)).slice(-10);
   } catch (e) { BLE.raws = (BLE.raws || []).concat('FFE3 indisponible: ' + ((e && e.message) || e)).slice(-10); }
   BLE.chr = chr; BLE.tries = 0;
-  if (!BLE.last) bleShow(null, null);
+  if (!BLE.hasBat) bleShow(null, null);
   $('b-bike').setAttribute('aria-pressed', 'true');
 }
 async function bleConnect() {
@@ -1246,6 +1321,13 @@ async function bleConnect() {
   }
 }
 $('b-bike').addEventListener('click', bleConnect);
+/* La moto renvoie ses données quand on réactive les notifications : on les rafraîchit toutes les 40 s (réception seulement) */
+setInterval(async function () {
+  if (!BLE.c3 || !BLE.dev || !BLE.dev.gatt || !BLE.dev.gatt.connected || BLE.busy) return;
+  BLE.busy = true;
+  try { await BLE.c3.stopNotifications(); await BLE.c3.startNotifications(); } catch (e) {}
+  BLE.busy = false;
+}, 40000);
 
 /* ---------- Démarrage ---------- */
 if (SIM) toast('Mode simulation : le trajet défile tout seul après « Démarrer ».', 6000);
