@@ -49,6 +49,9 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 #rail button{width:4rem;height:4rem;border-radius:1.25rem;background:#fff;box-shadow:var(--sh);display:flex;align-items:center;justify-content:center}
 #rail button.act{background:var(--route);color:#fff}
 
+#bikep{display:none;align-items:center;gap:.625rem;padding:.625rem 1rem;border-radius:1rem;background:var(--bg);font-size:1.375rem;font-weight:700}
+#bikep.low{background:#FFE9C7}
+#bikep.crit{background:#D92D20;color:#fff}
 #bike{right:1.5rem;top:9rem;display:none;align-items:center;gap:1rem;height:4.5rem;padding:0 1.25rem;border-radius:1.5rem}
 #bike .bv{display:flex;align-items:baseline;gap:.25rem}
 #bike b{font-size:2rem;line-height:1}
@@ -161,6 +164,7 @@ body.plan.collapsed #popen{display:flex}
 
 <aside id="panel" class="ui card" aria-label="Itinéraire">
   <div class="ph"><h1>Itinéraire</h1><div class="phb"><button id="swap" class="ib round" aria-label="Inverser départ et arrivée"><svg class="i" width="24" height="24" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><path d="M8 4v16M8 20l-3-3M8 20l3-3M16 20V4M16 4l-3 3M16 4l3 3"/></svg></button><button id="pclose" class="ib" aria-label="Replier le panneau"><svg class="i" width="24" height="24" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div></div>
+  <div id="bikep" class="bikep"></div>
   <div id="favs" class="favs"></div>
   <div class="fld"><label for="f-from">Départ</label><div class="inw"><input id="f-from" type="text" autocomplete="off" autocorrect="off" value="Ma position"><button id="c-from" class="clr" type="button" aria-label="Effacer le départ"><svg class="i" width="22" height="22" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
   <div id="vias" class="vias"></div>
@@ -1152,6 +1156,10 @@ function bleShow(bat, rng) {
   card.style.display = 'flex';
   if (bat != null) $('bbat').textContent = Math.round(bat);
   if (rng != null) $('brng').textContent = Math.round(rng);
+  var bp = $('bikep');
+  bp.style.display = 'flex';
+  bp.className = 'bikep' + (bat != null && bat <= 10 ? ' crit' : (bat != null && bat <= 20 ? ' low' : ''));
+  bp.textContent = bat == null && rng == null ? 'Moto connectée, en attente des données…' : 'Moto : ' + (bat != null ? Math.round(bat) + ' %' : '--') + (rng != null ? ' · ' + Math.round(rng) + ' km d’autonomie' : '');
   card.classList.toggle('crit', bat != null && bat <= 10);
   card.classList.toggle('low', bat != null && bat > 10 && bat <= 20);
 }
@@ -1179,7 +1187,9 @@ function bleParse(txt) {
 }
 function bleOnValue(ev) {
   var v = ev.target.value;
+  BLE.n = (BLE.n || 0) + 1; BLE.bytes = (BLE.bytes || 0) + (ev.target.value ? ev.target.value.byteLength : 0);
   try { bleParse(new TextDecoder().decode(v.buffer ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength) : v)); } catch (e) {}
+  if (!BLE.last || (BLE.last.remaining_oil == null && BLE.last.endurance == null)) $('bikep').textContent = 'Moto connectée : ' + BLE.n + ' message(s) reçu(s), ' + BLE.bytes + ' octets' + (BLE.last ? ' — champs : ' + Object.keys(BLE.last).join(', ') : '');
 }
 async function bleLink(dev) {
   var server = await dev.gatt.connect();
@@ -1188,12 +1198,13 @@ async function bleLink(dev) {
   chr.addEventListener('characteristicvaluechanged', bleOnValue);
   await chr.startNotifications();
   BLE.chr = chr; BLE.tries = 0;
+  if (!BLE.last) bleShow(null, null);
   $('b-bike').setAttribute('aria-pressed', 'true');
 }
 async function bleConnect() {
   if (BLE.dev && BLE.dev.gatt && BLE.dev.gatt.connected) {
     BLE.manual = true; BLE.dev.gatt.disconnect();
-    $('b-bike').setAttribute('aria-pressed', 'false'); $('bike').style.display = 'none';
+    $('b-bike').setAttribute('aria-pressed', 'false'); $('bike').style.display = 'none'; $('bikep').style.display = 'none';
     toast('Moto déconnectée.', 2000); return;
   }
   if (!navigator.bluetooth) { toast('Bluetooth indisponible dans ce navigateur. Ouvre la page dans l’appli Bluefy (iPhone) ou dans Chrome (Android).', 8000); return; }
