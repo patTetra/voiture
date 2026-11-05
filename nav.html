@@ -49,6 +49,14 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 #rail button{width:4rem;height:4rem;border-radius:1.25rem;background:#fff;box-shadow:var(--sh);display:flex;align-items:center;justify-content:center}
 #rail button.act{background:var(--route);color:#fff}
 
+#bike{right:1.5rem;top:9rem;display:none;align-items:center;gap:1rem;height:4.5rem;padding:0 1.25rem;border-radius:1.5rem}
+#bike .bv{display:flex;align-items:baseline;gap:.25rem}
+#bike b{font-size:2rem;line-height:1}
+#bike small{font-size:1rem;color:var(--muted);font-weight:500}
+#bike.low{background:#FFE9C7}
+#bike.crit{background:#D92D20;color:#fff}
+#bike.crit small{color:#fff}
+#b-bike[aria-pressed="true"]{background:var(--route);color:#fff}
 #bmenu{right:6.5rem;bottom:3.5rem;display:none;flex-direction:column;gap:.375rem;padding:.625rem;border-radius:1.5rem}
 #bmenu button{height:3.5rem;padding:0 1.5rem;border-radius:1rem;background:var(--bg);font-size:1.25rem;font-weight:600;text-align:left;white-space:nowrap}
 #bmenu button[aria-pressed="true"]{background:var(--route);color:#fff}
@@ -141,10 +149,12 @@ body.plan.collapsed #popen{display:flex}
   <button id="stop" class="ib" aria-label="Arrêter la navigation"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
 </div>
 
+<div id="bike" class="ui card" aria-live="polite"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/></svg><div class="bv"><b id="bbat">--</b><small>%</small></div><div class="bv"><b id="brng">--</b><small>km</small></div></div>
 <div id="bmenu" class="ui card" role="menu" aria-label="Fond de carte"></div>
 <div id="rail" class="ui">
   <button id="b-center" aria-label="Recentrer sur ma position"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
   <button id="b-in" aria-label="Zoomer"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button id="b-bike" aria-label="Connecter la moto"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></svg></button>
   <button id="b-layers" aria-label="Fond de carte"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 16.5l9 5 9-5"/></svg></button>
   <button id="b-out" aria-label="Dézoomer"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14"/></svg></button>
 </div>
@@ -1133,6 +1143,78 @@ function startSim() {
   }, 1000);
 }
 function stopSim() { if (simTimer) { clearInterval(simTimer); simTimer = null; } }
+
+/* ---------- Moto : batterie et autonomie en Bluetooth (Bluefy / Chrome Android) ---------- */
+var BLE_SVC = '0000e0ff-3c17-d293-8e48-14fe2e4da212';
+var BLE = { dev: null, chr: null, buf: '', tries: 0 };
+function bleShow(bat, rng) {
+  var card = $('bike');
+  card.style.display = 'flex';
+  if (bat != null) $('bbat').textContent = Math.round(bat);
+  if (rng != null) $('brng').textContent = Math.round(rng);
+  card.classList.toggle('crit', bat != null && bat <= 10);
+  card.classList.toggle('low', bat != null && bat > 10 && bat <= 20);
+}
+function bleParse(txt) {
+  BLE.buf += txt;
+  if (BLE.buf.length > 4000) BLE.buf = BLE.buf.slice(-1000);
+  for (;;) {
+    var a = BLE.buf.indexOf('{');
+    if (a < 0) { BLE.buf = ''; return; }
+    var depth = 0, end = -1;
+    for (var i = a; i < BLE.buf.length; i++) {
+      var c = BLE.buf[i];
+      if (c === '{') depth++;
+      else if (c === '}') { depth--; if (depth === 0) { end = i; break; } }
+    }
+    if (end < 0) { BLE.buf = BLE.buf.slice(a); return; }
+    var raw = BLE.buf.slice(a, end + 1);
+    BLE.buf = BLE.buf.slice(end + 1);
+    try {
+      var o = JSON.parse(raw);
+      BLE.last = o;
+      if (o.remaining_oil != null || o.endurance != null) bleShow(o.remaining_oil != null ? +o.remaining_oil : null, o.endurance != null ? +o.endurance : null);
+    } catch (e) {}
+  }
+}
+function bleOnValue(ev) {
+  var v = ev.target.value;
+  try { bleParse(new TextDecoder().decode(v.buffer ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength) : v)); } catch (e) {}
+}
+async function bleLink(dev) {
+  var server = await dev.gatt.connect();
+  var svc = await server.getPrimaryService(BLE_SVC);
+  var chr = await svc.getCharacteristic(0xFFE2);
+  chr.addEventListener('characteristicvaluechanged', bleOnValue);
+  await chr.startNotifications();
+  BLE.chr = chr; BLE.tries = 0;
+  $('b-bike').setAttribute('aria-pressed', 'true');
+}
+async function bleConnect() {
+  if (BLE.dev && BLE.dev.gatt && BLE.dev.gatt.connected) {
+    BLE.manual = true; BLE.dev.gatt.disconnect();
+    $('b-bike').setAttribute('aria-pressed', 'false'); $('bike').style.display = 'none';
+    toast('Moto déconnectée.', 2000); return;
+  }
+  if (!navigator.bluetooth) { toast('Bluetooth indisponible dans ce navigateur. Ouvre la page dans l’appli Bluefy (iPhone) ou dans Chrome (Android).', 8000); return; }
+  try {
+    var dev = await navigator.bluetooth.requestDevice({ filters: [{ services: [BLE_SVC] }, { namePrefix: 'REZON' }], optionalServices: [BLE_SVC] });
+    BLE.dev = dev; BLE.manual = false;
+    dev.addEventListener('gattserverdisconnected', function () {
+      $('b-bike').setAttribute('aria-pressed', 'false');
+      if (BLE.manual || BLE.tries >= 5) return;
+      BLE.tries++;
+      setTimeout(function () { bleLink(dev).catch(function () {}); }, 2000 * BLE.tries);
+    });
+    toast('Connexion à la moto…', 2500);
+    await bleLink(dev);
+    toast('Moto connectée. Les données arrivent dans quelques secondes.', 4000);
+  } catch (e) {
+    if (e && e.name === 'NotFoundError') return;
+    toast('Connexion à la moto impossible : ' + ((e && e.message) || e), 6000);
+  }
+}
+$('b-bike').addEventListener('click', bleConnect);
 
 /* ---------- Démarrage ---------- */
 if (SIM) toast('Mode simulation : le trajet défile tout seul après « Démarrer ».', 6000);
