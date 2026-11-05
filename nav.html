@@ -1178,7 +1178,7 @@ function bleParse(txt) {
     if (end < 0) { BLE.buf = BLE.buf.slice(a); return; }
     var raw = BLE.buf.slice(a, end + 1);
     BLE.buf = BLE.buf.slice(end + 1);
-    BLE.raws = (BLE.raws || []).concat(raw.replace(/\s+/g, ' ')).slice(-4);
+    BLE.raws = (BLE.raws || []).concat(raw.replace(/\s+/g, ' ')).slice(-10);
     try {
       var o = JSON.parse(raw);
       BLE.last = o;
