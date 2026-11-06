@@ -1423,6 +1423,42 @@ async function bleLink(dev) {
   if (!BLE.hasBat) bleShow(null, null);
   $('b-bike').setAttribute('aria-pressed', 'true');
 }
+function bleAttach(dev) {
+  BLE.dev = dev; BLE.manual = false; BLE.tries = 0;
+  if (dev._navAttached) return; dev._navAttached = true;
+  dev.addEventListener('gattserverdisconnected', function () {
+    $('b-bike').setAttribute('aria-pressed', 'false');
+    if (BLE.manual || BLE.tries >= 5) return;
+    BLE.tries++;
+    setTimeout(function () { bleLink(dev).catch(function () {}); }, 2000 * BLE.tries);
+  });
+}
+/* Reconnexion automatique : appareil déjà autorisé (getDevices), sans repasser par le sélecteur */
+var autoBusy = false;
+async function bleAuto() {
+  if (autoBusy || !navigator.bluetooth || !navigator.bluetooth.getDevices) return;
+  if (BLE.manual || (BLE.dev && BLE.dev.gatt && BLE.dev.gatt.connected)) return;
+  autoBusy = true;
+  try {
+    var devs = await navigator.bluetooth.getDevices();
+    for (var i = 0; i < devs.length; i++) {
+      var d = devs[i];
+      if (!/rezon/i.test(d.name || '') && devs.length > 1) continue;
+      bleAttach(d);
+      try { await bleLink(d); toast('Moto reconnectée.', 2500); break; } catch (e) {}
+    }
+  } catch (e) {}
+  autoBusy = false;
+}
+/* On libère proprement la moto quand la page se ferme, pour qu'elle reste visible au lancement suivant */
+function bleRelease() { try { if (BLE.dev && BLE.dev.gatt && BLE.dev.gatt.connected) { BLE.manual = true; BLE.dev.gatt.disconnect(); } } catch (e) {} }
+window.addEventListener('pagehide', bleRelease);
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'hidden') return;
+  if (BLE.dev) BLE.manual = false;
+  setTimeout(bleAuto, 500);
+});
+setTimeout(bleAuto, 800);
 async function bleConnect() {
   if (BLE.dev && BLE.dev.gatt && BLE.dev.gatt.connected) {
     BLE.manual = true; BLE.dev.gatt.disconnect();
@@ -1432,13 +1468,7 @@ async function bleConnect() {
   if (!navigator.bluetooth) { toast('Bluetooth indisponible dans ce navigateur. Ouvre la page dans l’appli Bluefy (iPhone) ou dans Chrome (Android).', 8000); return; }
   try {
     var dev = await navigator.bluetooth.requestDevice({ filters: [{ services: [BLE_SVC] }, { namePrefix: 'REZON' }], optionalServices: [BLE_SVC] });
-    BLE.dev = dev; BLE.manual = false;
-    dev.addEventListener('gattserverdisconnected', function () {
-      $('b-bike').setAttribute('aria-pressed', 'false');
-      if (BLE.manual || BLE.tries >= 5) return;
-      BLE.tries++;
-      setTimeout(function () { bleLink(dev).catch(function () {}); }, 2000 * BLE.tries);
-    });
+    bleAttach(dev);
     toast('Connexion à la moto…', 2500);
     await bleLink(dev);
     toast('Moto connectée. Les données arrivent dans quelques secondes.', 4000);
