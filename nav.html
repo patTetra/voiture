@@ -1191,32 +1191,41 @@ async function voiceApply(text) {
     }
   } catch (e) { toast('Recherche impossible : ' + ((e && e.message) || e), 5000); }
 }
-var micRec = null;
+var micRec = null, micTimer = null;
 $('b-mic').addEventListener('click', function () {
   var btn = $('b-mic');
   if (!SR) {
     toast('La reconnaissance vocale n’est pas disponible ici. Touche le champ Arrivée puis le micro du clavier.', 7000);
-    if (S.mode !== 'nav') { var po = $('panel'); if (po) document.body.classList.remove('collapsed'); $('f-to').focus(); }
+    $('f-to').focus();
     return;
   }
-  if (micRec) { try { micRec.stop(); } catch (e) {} return; }
+  if (micRec) { toast('Fin de l’écoute…', 1500); try { micRec.stop(); } catch (e) {} return; }
   var r = new SR();
-  r.lang = 'fr-FR'; r.interimResults = false; r.maxAlternatives = 1; r.continuous = false;
+  r.lang = 'fr-FR'; r.interimResults = true; r.maxAlternatives = 1; r.continuous = false;
   micRec = r;
-  btn.classList.add('rec');
-  var got = false;
+  var last = '', done = false;
+  function finish() {
+    if (done) return; done = true;
+    clearTimeout(micTimer); btn.classList.remove('rec'); micRec = null;
+    if (last) voiceApply(last); else toast('Je n’ai rien entendu. Touche le micro, parle, puis retouche-le pour terminer.', 5000);
+  }
+  r.onstart = function () { btn.classList.add('rec'); toast('Je t’écoute… (touche encore le micro quand tu as fini)', 4000); };
+  r.onspeechstart = function () { toast('Je t’entends…', 1500); };
   r.onresult = function (ev) {
-    got = true;
-    var txt = ev.results[0][0].transcript;
-    voiceApply(txt);
+    var txt = '';
+    for (var k = 0; k < ev.results.length; k++) txt += ev.results[k][0].transcript;
+    last = txt.trim();
+    if (last) toast('« ' + last + ' »', 2500);
+    if (ev.results[ev.results.length - 1].isFinal) { try { r.stop(); } catch (e) {} finish(); }
   };
   r.onerror = function (ev) {
     var m = ev && ev.error;
-    if (m === 'not-allowed' || m === 'service-not-allowed') toast('Micro refusé : autorise le micro pour ce site (Réglages de Bluefy).', 7000);
+    if (m === 'not-allowed' || m === 'service-not-allowed') toast('Micro refusé : autorise le micro et la reconnaissance vocale pour ce site (Réglages de Bluefy / iPhone).', 8000);
     else if (m !== 'no-speech' && m !== 'aborted') toast('Reconnaissance vocale : ' + m, 5000);
   };
-  r.onend = function () { btn.classList.remove('rec'); micRec = null; if (!got) toast('Je n’ai rien entendu. Touche le micro et parle.', 3500); };
-  try { r.start(); toast('Je t’écoute…', 3000); } catch (e) { btn.classList.remove('rec'); micRec = null; toast('Micro indisponible.', 4000); }
+  r.onend = finish;
+  micTimer = setTimeout(function () { try { r.stop(); } catch (e) {} setTimeout(finish, 800); }, 12000);
+  try { r.start(); btn.classList.add('rec'); } catch (e) { btn.classList.remove('rec'); micRec = null; toast('Micro indisponible : ' + ((e && e.message) || e), 5000); }
 });
 
 /* ---------- Moto : batterie et autonomie en Bluetooth (Bluefy / Chrome Android) ---------- */
