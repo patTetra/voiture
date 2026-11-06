@@ -47,7 +47,7 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 
 #rail{right:1.5rem;bottom:3.5rem;display:flex;flex-direction:column;gap:.75rem}
 #rail button{width:4rem;height:4rem;border-radius:1.25rem;background:#fff;box-shadow:var(--sh);display:flex;align-items:center;justify-content:center}
-#rail #b-mic{width:6.5rem;height:6.5rem;border-radius:2rem;align-self:flex-end;background:var(--route);color:#fff}
+#rail #b-mic{display:none;width:6.5rem;height:6.5rem;border-radius:2rem;align-self:flex-end;background:var(--route);color:#fff}
 #rail #b-mic.rec{background:#D92D20;animation:mp 1s ease-in-out infinite}
 @keyframes mp{50%{transform:scale(1.08)}}
 #rail button.act{background:var(--route);color:#fff}
@@ -55,14 +55,20 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 #bikep{display:none;align-items:center;word-break:break-all;font-size:1rem;gap:.625rem;padding:.625rem 1rem;border-radius:1rem;background:var(--bg);font-size:1.375rem;font-weight:700}
 #bikep.low{background:#FFE9C7}
 #bikep.crit{background:#D92D20;color:#fff}
-#bike{right:1.5rem;top:9rem;display:none;align-items:center;gap:1rem;height:4.5rem;padding:0 1.25rem;border-radius:1.5rem}
-#bike .bv{display:flex;align-items:baseline;gap:.25rem}
-#bike b{font-size:2rem;line-height:1}
-#bike small{font-size:1rem;color:var(--muted);font-weight:500}
+#bike{right:1.5rem;top:8.75rem;display:none;gap:1.75rem;padding:1rem 1.5rem 1.125rem;border-radius:1.75rem}
+#bike .bk{display:flex;flex-direction:column;gap:.375rem;min-width:7rem}
+#bike .bbig{display:flex;align-items:baseline;gap:.375rem}
+#bike b{font-size:4.25rem;line-height:.95;font-weight:800;letter-spacing:-.02em}
+#bike small{font-size:1.5rem;font-weight:600;color:var(--muted)}
+#bike .bl{font-size:1.125rem;font-weight:600;color:var(--muted);white-space:nowrap}
+#bike .bbar{height:.5rem;border-radius:.25rem;background:var(--line);overflow:hidden}
+#bike .bbar i{display:block;height:100%;width:0;background:#2E9E5B;transition:width .4s}
+#bike.low .bbar i{background:#E08A00}
+#bike.crit .bbar i{background:#fff}
+#bike.crit small,#bike.crit .bl{color:#fff}
 body.plan:not(.collapsed) #bike{display:none!important}
 #bike.low{background:#FFE9C7}
 #bike.crit{background:#D92D20;color:#fff}
-#bike.crit small{color:#fff}
 #b-bike[aria-pressed="true"]{background:var(--route);color:#fff}
 #bmenu{right:6.5rem;bottom:3.5rem;display:none;flex-direction:column;gap:.375rem;padding:.625rem;border-radius:1.5rem}
 #bmenu button{height:3.5rem;padding:0 1.5rem;border-radius:1rem;background:var(--bg);font-size:1.25rem;font-weight:600;text-align:left;white-space:nowrap}
@@ -158,7 +164,7 @@ body.plan.collapsed #popen{display:flex}
   <button id="stop" class="ib" aria-label="Arrêter la navigation"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
 </div>
 
-<div id="bike" class="ui card" aria-live="polite"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/></svg><div class="bv"><b id="bbat">--</b><small>%</small></div><div class="bv"><b id="brng">--</b><small>km</small></div></div>
+<div id="bike" class="ui card" aria-live="polite"><div class="bk"><div class="bbig"><b id="bbat">--</b><small>%</small></div><div class="bbar"><i id="bfill"></i></div><div class="bl">batterie</div></div><div class="bk"><div class="bbig"><b id="brng">--</b><small>km</small></div><div class="bl" id="bkwh">autonomie</div></div></div>
 <div id="bmenu" class="ui card" role="menu" aria-label="Fond de carte"></div>
 <div id="rail" class="ui">
   <button id="b-center" aria-label="Recentrer sur ma position"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
@@ -1262,6 +1268,7 @@ var BLE = { dev: null, chr: null, buf: '', tries: 0 };
 /* Autonomie estimée : consommation réelle (km parcourus par % de batterie), apprise au fil des trajets */
 var RG = { dist: 0, gpsSince: 0, gStep: 0, wStep: 0, lastOdo: null, soc: null, mark: 0, open: false };
 var RGD = (function () { var d = lsGet('nav.range'); return d && Array.isArray(d.steps) ? d : { steps: [] }; })();
+var CAP = +(CFG.batterie_kwh || 13.4);
 function rgGps(inc, v) { RG.dist += inc; RG.gpsSince += inc; RG.gStep += inc; RG.wStep += inc * (v || 0) * (v || 0); }
 function rgOdo(km) {
   if (RG.lastOdo != null) { var d = km - RG.lastOdo; if (d >= 0 && d < 10) RG.dist += d - RG.gpsSince; }
@@ -1323,6 +1330,9 @@ function bleShow(bat, motoRng) {
   var b = BLE.bat;
   var est = b != null && info.perPct != null ? b * info.perPct : null;
   $('brng').textContent = est != null ? Math.round(est) : '--';
+  var kwh = info.perPct ? CAP / info.perPct : null;
+  $('bkwh').textContent = kwh != null ? kwh.toFixed(1).replace('.', ',') + ' kWh/100 km' : 'autonomie (calibrage)';
+  if (b != null) $('bfill').style.width = Math.max(0, Math.min(100, b)) + '%';
   var cls = b != null && b <= 10 ? 'crit' : (b != null && b <= 20 ? 'low' : '');
   bp.className = 'bikep ' + cls;
   card.classList.toggle('crit', cls === 'crit');
@@ -1331,8 +1341,7 @@ function bleShow(bat, motoRng) {
   if (b == null) { bp.textContent = 'Moto connectée, en attente des données…'; return; }
   var ago = BLE.t ? Math.round((Date.now() - BLE.t) / 1000) : null;
   bp.textContent = 'Moto : ' + Math.round(b) + ' % · ' +
-    (est != null ? 'autonomie estimée ≈ ' + Math.round(est) + ' km (' + info.perPct.toFixed(2).replace('.', ',') + ' km par %)' : 'autonomie : calibrage en cours (' + Math.min(info.pct, 3) + '/3 % mesurés)') +
-    (BLE.motoRng != null ? ' · moto : ' + BLE.motoRng + ' km' : '') + (ago != null ? ' · maj il y a ' + ago + ' s' : '');
+    (est != null ? '≈ ' + Math.round(est) + ' km · ' + kwh.toFixed(1).replace('.', ',') + ' kWh/100 km' : 'autonomie : calibrage en cours (' + Math.min(info.pct, 3) + '/3 % mesurés)');
 }
 setInterval(function () { if (BLE.hasBat) bleShow(null, null); }, 5000);
 function bleParse(txt) {
@@ -1368,13 +1377,11 @@ function bleHex(v) {
 function bleOnE3(ev) {
   BLE.n = (BLE.n || 0) + 1;
   BLE.raws = (BLE.raws || []).concat('FFE3: ' + bleHex(ev.target.value)).slice(-10);
-  if (!BLE.hasBat) $('bikep').textContent = 'Moto connectée : ' + BLE.n + ' reçu(s) — ' + BLE.raws.join('  |  ');
 }
 function bleOnValue(ev) {
   var v = ev.target.value;
   BLE.n = (BLE.n || 0) + 1; BLE.bytes = (BLE.bytes || 0) + (ev.target.value ? ev.target.value.byteLength : 0);
   try { bleParse(new TextDecoder().decode(v.buffer ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength) : v)); } catch (e) {}
-  if (!BLE.hasBat) $('bikep').textContent = 'Moto connectée : ' + BLE.n + ' reçu(s) — ' + (BLE.raws || []).join('  |  ');
 }
 async function bleLink(dev) {
   var server = await dev.gatt.connect();
