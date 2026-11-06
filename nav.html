@@ -1191,7 +1191,7 @@ async function voiceApply(text) {
     }
   } catch (e) { toast('Recherche impossible : ' + ((e && e.message) || e), 5000); }
 }
-var micRec = null, micTimer = null;
+var micRec = null, micTimer = null, micFinish = null;
 $('b-mic').addEventListener('click', function () {
   var btn = $('b-mic');
   if (!SR) {
@@ -1199,19 +1199,37 @@ $('b-mic').addEventListener('click', function () {
     $('f-to').focus();
     return;
   }
-  if (micRec) { toast('Fin de l’écoute…', 1500); try { micRec.stop(); } catch (e) {} return; }
+  if (micRec) {
+    toast('Fin de l’écoute…', 1500);
+    try { micRec.stop(); } catch (e) {}
+    var rr = micRec; setTimeout(function () { if (micRec === rr && micFinish) micFinish(); }, 700);
+    return;
+  }
   var r = new SR();
   r.lang = 'fr-FR'; r.interimResults = true; r.maxAlternatives = 1; r.continuous = false;
   micRec = r;
   var last = '', done = false;
-  function finish() {
+  var alive = false;
+  function finish(silent) {
     if (done) return; done = true;
-    clearTimeout(micTimer); btn.classList.remove('rec'); micRec = null;
-    if (last) voiceApply(last); else toast('Je n’ai rien entendu. Touche le micro, parle, puis retouche-le pour terminer.', 5000);
+    clearTimeout(micTimer); clearTimeout(aliveT); btn.classList.remove('rec'); micRec = null; micFinish = null;
+    if (last) voiceApply(last);
+    else if (silent !== 'dead') toast('Je n’ai rien entendu. Touche le micro, parle, puis retouche-le pour terminer.', 5000);
   }
-  r.onstart = function () { btn.classList.add('rec'); toast('Je t’écoute… (touche encore le micro quand tu as fini)', 4000); };
+  micFinish = finish;
+  var aliveT = setTimeout(function () {
+    if (alive || done) return;
+    try { r.abort(); } catch (e) {}
+    finish('dead');
+    toast('La dictée vocale ne fonctionne pas dans ce navigateur (Bluefy). Utilise le raccourci Siri, ou le micro du clavier : touche le champ Arrivée.', 9000);
+    S.noSR = true;
+    try { $('f-to').focus(); } catch (e) {}
+  }, 3500);
+  r.onaudiostart = r.onsoundstart = r.onspeechstart = function () { alive = true; };
+  r.onstart = function () { alive = true; btn.classList.add('rec'); toast('Je t’écoute… (touche encore le micro quand tu as fini)', 4000); };
   r.onspeechstart = function () { toast('Je t’entends…', 1500); };
   r.onresult = function (ev) {
+    alive = true;
     var txt = '';
     for (var k = 0; k < ev.results.length; k++) txt += ev.results[k][0].transcript;
     last = txt.trim();
@@ -1219,14 +1237,22 @@ $('b-mic').addEventListener('click', function () {
     if (ev.results[ev.results.length - 1].isFinal) { try { r.stop(); } catch (e) {} finish(); }
   };
   r.onerror = function (ev) {
+    alive = true;
     var m = ev && ev.error;
     if (m === 'not-allowed' || m === 'service-not-allowed') toast('Micro refusé : autorise le micro et la reconnaissance vocale pour ce site (Réglages de Bluefy / iPhone).', 8000);
     else if (m !== 'no-speech' && m !== 'aborted') toast('Reconnaissance vocale : ' + m, 5000);
   };
-  r.onend = finish;
+  r.onend = function () { finish(); };
   micTimer = setTimeout(function () { try { r.stop(); } catch (e) {} setTimeout(finish, 800); }, 12000);
   try { r.start(); btn.classList.add('rec'); } catch (e) { btn.classList.remove('rec'); micRec = null; toast('Micro indisponible : ' + ((e && e.message) || e), 5000); }
 });
+
+/* Lien direct : nav.html?dest=4 rue de Glasgow à Brest  (pour un raccourci Siri / iOS) */
+(function () {
+  var q = new URLSearchParams(location.search), d = q.get('dest') || q.get('destination') || q.get('etape');
+  if (!d) return;
+  setTimeout(function () { voiceApply((q.get('etape') && !q.get('dest') ? 'étape ' : '') + d); }, 1200);
+})();
 
 /* ---------- Moto : batterie et autonomie en Bluetooth (Bluefy / Chrome Android) ---------- */
 var BLE_SVC = '0000e0ff-3c17-d293-8e48-14fe2e4da212';
