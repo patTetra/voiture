@@ -208,6 +208,8 @@ body.plan.collapsed #popen{display:flex}
 <script>
 (function () {
 'use strict';
+window.addEventListener('error', function (e) { try { toast('Erreur : ' + e.message + ' (ligne ' + e.lineno + ')', 15000); } catch (x) {} });
+window.addEventListener('unhandledrejection', function (e) { try { toast('Erreur : ' + ((e.reason && e.reason.message) || e.reason), 15000); } catch (x) {} });
 
 /* ---------- Réglages ---------- */
 var RELAY = 'https://nav.tetra2922.workers.dev';
@@ -581,7 +583,7 @@ function bindField(field) {
     geoTimer = setTimeout(async function () {
       try {
         var list = await geocode(q);
-        if (seq === geoSeq) showSugg(suggWithHist(q, list), field);
+        if (seq === geoSeq) { if (!list.length) toast('Aucun résultat pour « ' + q + ' ». Vérifie le relais Cloudflare.', 4000); showSugg(suggWithHist(q, list), field); }
       } catch (e) { showSugg(histFind(q, 6), field); toast("Recherche d'adresse impossible. Vérifie le relais Cloudflare et la clé ORS_KEY."); }
     }, 350);
   });
@@ -1042,7 +1044,7 @@ $('f-via').addEventListener('input', function () {
   geoTimer = setTimeout(async function () {
     try {
       var list = await geocode(q);
-      if (seq === geoSeq) showSugg(suggWithHist(q, list), 'via');
+      if (seq === geoSeq) { if (!list.length) toast('Aucun résultat pour « ' + q + ' »', 3000); showSugg(suggWithHist(q, list), 'via'); }
     } catch (e) { toast("Recherche d'adresse impossible."); }
   }, 350);
 });
@@ -1317,14 +1319,15 @@ function bleShow(bat, motoRng) {
   card.style.display = 'flex'; bp.style.display = 'flex';
   if (bat != null) { BLE.bat = bat; BLE.hasBat = true; BLE.t = Date.now(); $('bbat').textContent = Math.round(bat); }
   if (motoRng != null) BLE.motoRng = motoRng;
-  var info = rgInfo(), b = BLE.bat;
+  var info; try { info = rgInfo(); } catch (e) { info = { pct: 0, perPct: null }; BLE.err = 'info ' + e.message; }
+  var b = BLE.bat;
   var est = b != null && info.perPct != null ? b * info.perPct : null;
   $('brng').textContent = est != null ? Math.round(est) : '--';
   var cls = b != null && b <= 10 ? 'crit' : (b != null && b <= 20 ? 'low' : '');
   bp.className = 'bikep ' + cls;
   card.classList.toggle('crit', cls === 'crit');
   card.classList.toggle('low', cls === 'low');
-  if (bat != null && S.routes && S.routes.length) renderRoutes();
+  if (bat != null && S.routes && S.routes.length) { try { renderRoutes(); } catch (e) { BLE.err = 'routes ' + e.message; } }
   if (b == null) { bp.textContent = 'Moto connectée, en attente des données…'; return; }
   var ago = BLE.t ? Math.round((Date.now() - BLE.t) / 1000) : null;
   bp.textContent = 'Moto : ' + Math.round(b) + ' % · ' +
@@ -1351,10 +1354,10 @@ function bleParse(txt) {
     try {
       var o = JSON.parse(raw);
       BLE.last = o;
-      if (o.total != null && o.item === 2) rgOdo(+o.total / 10);
-      if (o.remaining_oil != null) rgSoc(+o.remaining_oil);
+      try { if (o.total != null && o.item === 2) rgOdo(+o.total / 10); } catch (e) { BLE.err = 'odo ' + e.message; }
+      try { if (o.remaining_oil != null) rgSoc(+o.remaining_oil); } catch (e) { BLE.err = 'soc ' + e.message; }
       if (o.remaining_oil != null || o.endurance != null) bleShow(o.remaining_oil != null ? +o.remaining_oil : null, o.endurance != null ? +o.endurance : null);
-    } catch (e) {}
+    } catch (e) { toast('Moto : erreur de lecture (' + e.message + ')', 8000); }
   }
 }
 function bleHex(v) {
