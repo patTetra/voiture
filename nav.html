@@ -60,6 +60,9 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 #bike .bbig{display:flex;align-items:baseline;gap:.375rem}
 #bike b{font-size:4.25rem;line-height:.95;font-weight:800;letter-spacing:-.02em}
 #bike small{font-size:1.5rem;font-weight:600;color:var(--muted)}
+#bike #barr.warn b{color:#D92D20}
+#bike.crit #barr.warn b{color:#fff}
+#bike.stale{opacity:.65}
 #bike .bl{font-size:1.125rem;font-weight:600;color:var(--muted);white-space:nowrap}
 #bike .bbar{height:.5rem;border-radius:.25rem;background:var(--line);overflow:hidden}
 #bike .bbar i{display:block;height:100%;width:0;background:#2E9E5B;transition:width .4s}
@@ -113,7 +116,7 @@ body.plan:not(.collapsed) #bike{display:none!important}
 .lpb{height:3.75rem;border-radius:1.125rem;background:var(--bg);font-size:1.375rem;font-weight:600;display:flex;align-items:center;gap:.875rem;padding:0 1.25rem;text-align:left}
 .lpb.pri{background:var(--route);color:#fff}
 .sugg{display:flex;flex-direction:column;gap:.25rem}
-.rt .bt{font-size:1.0625rem;font-weight:600;color:var(--muted)}
+.rt .bt{font-size:1.5rem;font-weight:800;color:var(--ink)}
 .rt .bt.warn{color:#D92D20}
 .sugg .hic{display:inline-flex;vertical-align:-.2rem;margin-right:.625rem;color:var(--muted)}
 .sugg .hclr{min-height:3rem;font-size:1.0625rem;color:var(--muted);text-align:center;background:transparent}
@@ -164,7 +167,7 @@ body.plan.collapsed #popen{display:flex}
   <button id="stop" class="ib" aria-label="Arrêter la navigation"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
 </div>
 
-<div id="bike" class="ui card" aria-live="polite"><div class="bk"><div class="bbig"><b id="bbat">--</b><small>%</small></div><div class="bbar"><i id="bfill"></i></div><div class="bl">batterie</div></div><div class="bk"><div class="bbig"><b id="brng">--</b><small>km</small></div><div class="bl" id="bkwh">autonomie</div></div></div>
+<div id="bike" class="ui card" aria-live="polite"><div class="bk"><div class="bbig"><b id="bbat">--</b><small>%</small></div><div class="bbar"><i id="bfill"></i></div><div class="bl">batterie</div></div><div class="bk"><div class="bbig"><b id="brng">--</b><small>km</small></div><div class="bl" id="bkwh">autonomie</div></div><div class="bk" id="barr" style="display:none"><div class="bbig"><b id="barrv">--</b><small>%</small></div><div class="bl">à l’arrivée</div></div></div>
 <div id="bmenu" class="ui card" role="menu" aria-label="Fond de carte"></div>
 <div id="rail" class="ui">
   <button id="b-center" aria-label="Recentrer sur ma position"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
@@ -1307,24 +1310,34 @@ function rgModel() {
   if (c2 < 0) { c2 = 0; c0 = Sdp / Sdd; } else if (c0 < 0) { c0 = 0; c2 = SWp / SWW; }
   return { c0: c0, c2: c2, n: st.length };
 }
-function rgRouteUse(r) {
-  var m = rgModel(), use = 0;
-  if (m && (m.c0 > 0 || m.c2 > 0)) {
-    (r.steps || []).forEach(function (st) {
-      var d = (st.distance || 0) / 1000, t = st.duration || 0;
-      if (d <= 0) return;
-      var v = t > 0 ? Math.min(130, d / (t / 3600)) : 50;
-      use += d * (m.c0 + m.c2 * v * v);
-    });
-    return use;
-  }
-  var info = rgInfo();
-  return info.perPct ? (r.dist / 1000) / info.perPct : null;
+function rgUseFrom(r, along) {
+  var m = rgModel(), per = rgInfo().perPct, modelOk = m && (m.c0 > 0 || m.c2 > 0);
+  var constRate = per ? 1 / per : null;
+  if (!modelOk && constRate == null) return null;
+  if (!r.steps || !r.steps.length) return Math.max(0, r.total - along) / 1000 * (modelOk ? (m.c0 + m.c2 * 2500) : constRate);
+  var use = 0;
+  r.steps.forEach(function (st) {
+    var s0 = r.cum[st.way_points[0]], s1 = r.cum[st.way_points[1]], len = s1 - s0;
+    if (!(len > 0)) return;
+    var rem = Math.max(0, s1 - Math.max(s0, along));
+    if (rem <= 0) return;
+    var dd = (st.distance || len) / 1000, t = st.duration || 0;
+    var v = t > 0 ? Math.min(130, dd / (t / 3600)) : 50;
+    use += (rem / 1000) * (modelOk ? (m.c0 + m.c2 * v * v) : constRate);
+  });
+  return use;
+}
+function rgRouteUse(r) { return rgUseFrom(r, 0); }
+function rgArrival() {
+  var r = S.route || (S.routes && S.routes[S.sel]);
+  if (!r || BLE.bat == null) return null;
+  var u = rgUseFrom(r, S.mode === 'nav' ? S.along : 0);
+  return u == null ? null : BLE.bat - u;
 }
 function bleShow(bat, motoRng) {
   var card = $('bike'), bp = $('bikep');
   card.style.display = 'flex'; bp.style.display = 'flex';
-  if (bat != null) { BLE.bat = bat; BLE.hasBat = true; BLE.t = Date.now(); $('bbat').textContent = Math.round(bat); }
+  if (bat != null) { BLE.bat = bat; BLE.hasBat = true; BLE.stale = false; BLE.t = Date.now(); $('bbat').textContent = Math.round(bat); lsSet('nav.bikelast', { bat: bat, t: Date.now() }); }
   if (motoRng != null) BLE.motoRng = motoRng;
   var info; try { info = rgInfo(); } catch (e) { info = { pct: 0, perPct: null }; BLE.err = 'info ' + e.message; }
   var b = BLE.bat;
@@ -1332,18 +1345,27 @@ function bleShow(bat, motoRng) {
   $('brng').textContent = est != null ? Math.round(est) : '--';
   var kwh = info.perPct ? CAP / info.perPct : null;
   $('bkwh').textContent = kwh != null ? kwh.toFixed(1).replace('.', ',') + ' kWh/100 km' : 'autonomie (calibrage)';
-  if (b != null) $('bfill').style.width = Math.max(0, Math.min(100, b)) + '%';
+  if (b != null) { $('bfill').style.width = Math.max(0, Math.min(100, b)) + '%'; $('bbat').textContent = Math.round(b); }
+  card.classList.toggle('stale', !!BLE.stale);
+  var arr = rgArrival(), ba = $('barr');
+  if (arr != null) { ba.style.display = 'flex'; $('barrv').textContent = Math.max(0, Math.round(arr)); ba.classList.toggle('warn', arr < 8); }
+  else ba.style.display = 'none';
   var cls = b != null && b <= 10 ? 'crit' : (b != null && b <= 20 ? 'low' : '');
   bp.className = 'bikep ' + cls;
   card.classList.toggle('crit', cls === 'crit');
   card.classList.toggle('low', cls === 'low');
   if (bat != null && S.routes && S.routes.length) { try { renderRoutes(); } catch (e) { BLE.err = 'routes ' + e.message; } }
   if (b == null) { bp.textContent = 'Moto connectée, en attente des données…'; return; }
+  var arrT = arr != null ? ' · arrivée ≈ ' + Math.max(0, Math.round(arr)) + ' %' : '';
   var ago = BLE.t ? Math.round((Date.now() - BLE.t) / 1000) : null;
   bp.textContent = 'Moto : ' + Math.round(b) + ' % · ' +
-    (est != null ? '≈ ' + Math.round(est) + ' km · ' + kwh.toFixed(1).replace('.', ',') + ' kWh/100 km' : 'autonomie : calibrage en cours (' + Math.min(info.pct, 3) + '/3 % mesurés)');
+    (est != null ? '≈ ' + Math.round(est) + ' km · ' + kwh.toFixed(1).replace('.', ',') + ' kWh/100 km' : 'autonomie : calibrage en cours (' + Math.min(info.pct, 3) + '/3 % mesurés)') + (BLE.stale ? ' (dernier relevé)' : '') + arrT;
 }
 setInterval(function () { if (BLE.hasBat) bleShow(null, null); }, 5000);
+(function () {
+  var st = lsGet('nav.bikelast');
+  if (st && st.bat != null) { BLE.bat = +st.bat; BLE.hasBat = true; BLE.stale = true; bleShow(null, null); }
+})();
 function bleParse(txt) {
   BLE.buf += txt;
   if (BLE.buf.length > 4000) BLE.buf = BLE.buf.slice(-1000);
