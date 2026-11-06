@@ -1224,9 +1224,9 @@ $('b-mic').addEventListener('click', function () {
     toast('La dictée vocale ne fonctionne pas dans ce navigateur (Bluefy). Utilise le raccourci Siri, ou le micro du clavier : touche le champ Arrivée.', 9000);
     S.noSR = true;
     try { $('f-to').focus(); } catch (e) {}
-  }, 3500);
+  }, 4000);
   r.onaudiostart = r.onsoundstart = r.onspeechstart = function () { alive = true; };
-  r.onstart = function () { alive = true; btn.classList.add('rec'); toast('Je t’écoute… (touche encore le micro quand tu as fini)', 4000); };
+  r.onstart = function () { btn.classList.add('rec'); toast('Je t’écoute… (touche encore le micro quand tu as fini)', 4000); };
   r.onspeechstart = function () { toast('Je t’entends…', 1500); };
   r.onresult = function (ev) {
     alive = true;
