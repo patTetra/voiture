@@ -47,6 +47,9 @@ svg.i{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 
 #rail{right:1.5rem;bottom:3.5rem;display:flex;flex-direction:column;gap:.75rem}
 #rail button{width:4rem;height:4rem;border-radius:1.25rem;background:#fff;box-shadow:var(--sh);display:flex;align-items:center;justify-content:center}
+#rail #b-mic{width:6.5rem;height:6.5rem;border-radius:2rem;align-self:flex-end;background:var(--route);color:#fff}
+#rail #b-mic.rec{background:#D92D20;animation:mp 1s ease-in-out infinite}
+@keyframes mp{50%{transform:scale(1.08)}}
 #rail button.act{background:var(--route);color:#fff}
 
 #bikep{display:none;align-items:center;word-break:break-all;font-size:1rem;gap:.625rem;padding:.625rem 1rem;border-radius:1rem;background:var(--bg);font-size:1.375rem;font-weight:700}
@@ -160,6 +163,7 @@ body.plan.collapsed #popen{display:flex}
 <div id="rail" class="ui">
   <button id="b-center" aria-label="Recentrer sur ma position"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
   <button id="b-in" aria-label="Zoomer"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button id="b-mic" aria-label="Dicter la destination"><svg class="i" width="44" height="44" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
   <button id="b-bike" aria-label="Connecter la moto"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></svg></button>
   <button id="b-layers" aria-label="Fond de carte"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.2" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 16.5l9 5 9-5"/></svg></button>
   <button id="b-out" aria-label="Dézoomer"><svg class="i" width="30" height="30" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14"/></svg></button>
@@ -1158,6 +1162,62 @@ function startSim() {
   }, 1000);
 }
 function stopSim() { if (simTimer) { clearInterval(simTimer); simTimer = null; } }
+
+/* ---------- Dictée vocale de la destination ---------- */
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+function voiceClean(t) {
+  t = (t || '').toLowerCase().replace(/[.!?]+$/g, '').trim();
+  t = t.replace(/^(s'il te plaît|s'il vous plaît|ok|alors|bon|bonjour)[, ]+/, '');
+  var via = /^(ajoute|ajouter|rajoute|mets?|mettre)?\s*(une\s+)?(étape|etape)\s*(à|au|aux|en|chez|vers|pour|sur)?\s*/.exec(t);
+  if (via) return { via: true, q: t.slice(via[0].length).trim() };
+  t = t.replace(/^(je vais|on va|nous allons|je veux aller|je voudrais aller|je souhaite aller|va|aller|allons|emmène[- ]moi|emmenez[- ]moi|direction|navigue vers|naviguer vers|itinéraire pour|itinéraire vers|destination)\s*(à|au|aux|en|chez|vers|pour|sur)?\s+/, '');
+  return { via: false, q: t.trim() };
+}
+function say(t) { try { if (window.speechSynthesis) { var u = new SpeechSynthesisUtterance(t); u.lang = 'fr-FR'; speechSynthesis.cancel(); speechSynthesis.speak(u); } } catch (e) {} }
+async function voiceApply(text) {
+  var o = voiceClean(text);
+  if (!o.q) { toast('Je n’ai pas compris l’adresse.', 4000); return; }
+  toast('« ' + o.q + ' » : recherche…', 3000);
+  try {
+    var list = await geocode(o.q);
+    if (!list.length) { toast('Adresse introuvable : « ' + o.q + ' »', 5000); say('Adresse introuvable'); return; }
+    if (o.via) {
+      if (!S.to) { toast('Choisis d’abord une destination.', 4000); return; }
+      addVia(list[0], true); histAdd(list[0]);
+      toast('Étape ajoutée : ' + list[0].label, 5000); say('Étape ajoutée');
+    } else {
+      pick('to', list[0]);
+      toast('Destination : ' + list[0].label, 6000); say('Destination : ' + list[0].label);
+    }
+  } catch (e) { toast('Recherche impossible : ' + ((e && e.message) || e), 5000); }
+}
+var micRec = null;
+$('b-mic').addEventListener('click', function () {
+  var btn = $('b-mic');
+  if (!SR) {
+    toast('La reconnaissance vocale n’est pas disponible ici. Touche le champ Arrivée puis le micro du clavier.', 7000);
+    if (S.mode !== 'nav') { var po = $('panel'); if (po) document.body.classList.remove('collapsed'); $('f-to').focus(); }
+    return;
+  }
+  if (micRec) { try { micRec.stop(); } catch (e) {} return; }
+  var r = new SR();
+  r.lang = 'fr-FR'; r.interimResults = false; r.maxAlternatives = 1; r.continuous = false;
+  micRec = r;
+  btn.classList.add('rec');
+  var got = false;
+  r.onresult = function (ev) {
+    got = true;
+    var txt = ev.results[0][0].transcript;
+    voiceApply(txt);
+  };
+  r.onerror = function (ev) {
+    var m = ev && ev.error;
+    if (m === 'not-allowed' || m === 'service-not-allowed') toast('Micro refusé : autorise le micro pour ce site (Réglages de Bluefy).', 7000);
+    else if (m !== 'no-speech' && m !== 'aborted') toast('Reconnaissance vocale : ' + m, 5000);
+  };
+  r.onend = function () { btn.classList.remove('rec'); micRec = null; if (!got) toast('Je n’ai rien entendu. Touche le micro et parle.', 3500); };
+  try { r.start(); toast('Je t’écoute…', 3000); } catch (e) { btn.classList.remove('rec'); micRec = null; toast('Micro indisponible.', 4000); }
+});
 
 /* ---------- Moto : batterie et autonomie en Bluetooth (Bluefy / Chrome Android) ---------- */
 var BLE_SVC = '0000e0ff-3c17-d293-8e48-14fe2e4da212';
