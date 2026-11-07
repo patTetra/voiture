@@ -1405,8 +1405,24 @@ function bleOnValue(ev) {
   BLE.n = (BLE.n || 0) + 1; BLE.bytes = (BLE.bytes || 0) + (ev.target.value ? ev.target.value.byteLength : 0);
   try { bleParse(new TextDecoder().decode(v.buffer ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength) : v)); } catch (e) {}
 }
+function withTimeout(p, ms, msg) { return new Promise(function (res, rej) { var t = setTimeout(function () { rej(new Error(msg)); }, ms); p.then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); }); }); }
+function bleErr(e) { return e ? ((e.name && e.name !== 'Error' ? e.name + ' : ' : '') + (e.message || e)) : 'erreur'; }
+function bleWait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+/* Connexion avec plusieurs essais : la moto met parfois quelques secondes à se libérer */
 async function bleLink(dev) {
-  var server = await dev.gatt.connect();
+  var last;
+  for (var k = 0; k < 4; k++) {
+    try { await bleLink1(dev); return; }
+    catch (e) {
+      last = e;
+      try { dev.gatt.disconnect(); } catch (x) {}
+      await bleWait(1500 + 1500 * k);
+    }
+  }
+  throw last;
+}
+async function bleLink1(dev) {
+  var server = await withTimeout(dev.gatt.connect(), 12000, 'délai de connexion dépassé');
   var svc = await server.getPrimaryService(BLE_SVC);
   var chr = await svc.getCharacteristic(0xFFE2);
   chr.addEventListener('characteristicvaluechanged', bleOnValue);
@@ -1445,7 +1461,7 @@ async function bleAuto() {
       var d = devs[i];
       if (!/rezon/i.test(d.name || '') && devs.length > 1) continue;
       bleAttach(d);
-      try { await bleLink(d); toast('Moto reconnectée.', 2500); break; } catch (e) {}
+      try { await bleLink(d); toast('Moto reconnectée.', 2500); break; } catch (e) { toast('Reconnexion moto impossible : ' + bleErr(e) + '. Touche le bouton Bluetooth.', 6000); }
     }
   } catch (e) {}
   autoBusy = false;
@@ -1466,6 +1482,15 @@ async function bleConnect() {
     toast('Moto déconnectée.', 2000); return;
   }
   if (!navigator.bluetooth) { toast('Bluetooth indisponible dans ce navigateur. Ouvre la page dans l’appli Bluefy (iPhone) ou dans Chrome (Android).', 8000); return; }
+  if (navigator.bluetooth.getDevices) {
+    try {
+      var known = await navigator.bluetooth.getDevices();
+      for (var i = 0; i < known.length; i++) {
+        bleAttach(known[i]); toast('Connexion à la moto…', 2500);
+        try { await bleLink(known[i]); toast('Moto connectée.', 3000); return; } catch (e) {}
+      }
+    } catch (e) {}
+  }
   try {
     var dev = await navigator.bluetooth.requestDevice({ filters: [{ services: [BLE_SVC] }, { namePrefix: 'REZON' }], optionalServices: [BLE_SVC] });
     bleAttach(dev);
@@ -1474,7 +1499,7 @@ async function bleConnect() {
     toast('Moto connectée. Les données arrivent dans quelques secondes.', 4000);
   } catch (e) {
     if (e && e.name === 'NotFoundError') return;
-    toast('Connexion à la moto impossible : ' + ((e && e.message) || e), 6000);
+    toast('Connexion à la moto impossible : ' + bleErr(e) + ' — éteins/rallume le Bluetooth de l’iPhone ou le contact de la moto, puis réessaie.', 9000);
   }
 }
 $('b-bike').addEventListener('click', bleConnect);
