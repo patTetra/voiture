@@ -73,6 +73,12 @@ body.plan:not(.collapsed) #bike{display:none!important}
 #bike.low{background:#FFE9C7}
 #bike.crit{background:#D92D20;color:#fff}
 #b-bike[aria-pressed="true"]{background:var(--route);color:#fff}
+#b-bike{position:relative}
+#b-bike::after{content:"";position:absolute;top:.375rem;right:.375rem;width:.875rem;height:.875rem;border-radius:50%;background:#98A2B3;border:2px solid #fff}
+#b-bike[data-st="ok"]::after{background:#12B76A}
+#b-bike[data-st="wait"]::after{background:#F79009;animation:bkp 1s infinite}
+#b-bike[data-st="off"]::after{background:#D92D20}
+@keyframes bkp{50%{opacity:.25}}
 #bmenu{right:6.5rem;bottom:3.5rem;display:none;flex-direction:column;gap:.375rem;padding:.625rem;border-radius:1.5rem}
 #bmenu button{height:3.5rem;padding:0 1.5rem;border-radius:1rem;background:var(--bg);font-size:1.25rem;font-weight:600;text-align:left;white-space:nowrap}
 #bmenu button[aria-pressed="true"]{background:var(--route);color:#fff}
@@ -1410,7 +1416,7 @@ function bleErr(e) { return e ? ((e.name && e.name !== 'Error' ? e.name + ' : ' 
 function bleWait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 /* Connexion avec plusieurs essais : la moto met parfois quelques secondes à se libérer */
 async function bleLink(dev) {
-  var last;
+  var last; $('b-bike').dataset.st = 'wait';
   for (var k = 0; k < 4; k++) {
     try { await bleLink1(dev); return; }
     catch (e) {
@@ -1419,6 +1425,7 @@ async function bleLink(dev) {
       await bleWait(1500 + 1500 * k);
     }
   }
+  $('b-bike').dataset.st = 'off';
   throw last;
 }
 async function bleLink1(dev) {
@@ -1437,13 +1444,13 @@ async function bleLink1(dev) {
   } catch (e) { BLE.raws = (BLE.raws || []).concat('FFE3 indisponible: ' + ((e && e.message) || e)).slice(-10); }
   BLE.chr = chr; BLE.tries = 0;
   if (!BLE.hasBat) bleShow(null, null);
-  $('b-bike').setAttribute('aria-pressed', 'true');
+  $('b-bike').setAttribute('aria-pressed', 'true'); $('b-bike').dataset.st = 'ok';
 }
 function bleAttach(dev) {
   BLE.dev = dev; BLE.manual = false; BLE.tries = 0;
   if (dev._navAttached) return; dev._navAttached = true;
   dev.addEventListener('gattserverdisconnected', function () {
-    $('b-bike').setAttribute('aria-pressed', 'false');
+    $('b-bike').setAttribute('aria-pressed', 'false'); $('b-bike').dataset.st = BLE.manual ? '' : 'off';
     if (BLE.manual || BLE.tries >= 5) return;
     BLE.tries++;
     setTimeout(function () { bleLink(dev).catch(function () {}); }, 2000 * BLE.tries);
