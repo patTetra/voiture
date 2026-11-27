@@ -121,6 +121,10 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%}
       <label>Cadrage vertical</label><input type="range" class="gy" min="-100" max="100" step="1">
       <button class="btn2 greset">Remettre la photo d'origine</button></div>
     <div class="hint">Choisis un visage bien centré, de préférence en portrait. L'aperçu se met en pause sur l'image complète quand tu modifies une photo.</div>
+    <h2>Plaques des voitures</h2>
+    <label>Voiture de gauche</label><input type="text" id="gC0" maxlength="12">
+    <label>Voiture du milieu</label><input type="text" id="gC1" maxlength="12">
+    <label>Voiture de droite</label><input type="text" id="gC2" maxlength="12">
     <h2>Textes</h2>
     <label>Saison</label><input type="text" id="gSeason" maxlength="14">
     <label>Phrase d'accroche (3 lignes)</label>
@@ -462,7 +466,7 @@ function ground(c,t){
   for(let x=-260;x<W+260;x+=260){rr(c,x+off,985,130,16,6);c.fill()}
 }
 /* ---------- voitures vues de face ---------- */
-function car(c,x,y,w,kind,t){
+function car(c,x,y,w,kind,t,lab){
   const h=w*.78,col={fiat:'#E8B0A3',spring:'#6F8C88',twingo:'#E4232F'}[kind];
   c.save();c.translate(x,y);
   c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.ellipse(0,6,w*.56,w*.07,0,0,7);c.fill();
@@ -480,7 +484,7 @@ function car(c,x,y,w,kind,t){
   }
   /* plaque + signes */
   c.fillStyle='#fff';rr(c,-w*.14,-h*.27,w*.28,h*.1,h*.02);c.fill();c.lineWidth=4;c.stroke();
-  stext(c,kind==='fiat'?'500':kind==='spring'?'DACIA':'twingo',0,-h*.22,h*.07,{fill:NAVY,font:"'MontXBI'",align:'center'});
+  {const txt=String(lab==null?'':lab),f0=h*.07;c.font=`${f0}px 'MontXBI'`;const mw=Math.max(1,c.measureText(txt).width),fz=Math.min(f0,f0*(w*.25)/mw);stext(c,txt,0,-h*.22,fz,{fill:NAVY,font:"'MontXBI'",align:'center'})}
   c.fillStyle='rgba(255,255,255,.9)';c.beginPath();c.arc(0,-h*.45,w*.035,0,7);c.fill();
   c.restore();
 }
@@ -550,9 +554,9 @@ function draw(c,t,S,after){
   if(pa>0)photo(c,S,'patrick',1665,830+(1-pa)*620+(t>2?Math.sin(t*2+1)*4:0),t,.04);
   /* voitures */
   const bc=k=>t>2.2?Math.sin(t*3+k)*2.5:0;
-  const pf=eb((t-.9)/.7,1.3);if(t>.9)car(c,-300+940*pf,1065+bc(0),360,'fiat',t);
-  const pt=eb((t-1.2)/.7,1.3);if(t>1.2)car(c,2220-940*pt,1065+bc(2),360,'twingo',t);
-  const ps=eoc((t-1.05)/.8);if(t>1.05)car(c,960,850+215*ps+bc(1),140+280*ps,'spring',t);
+  const pf=eb((t-.9)/.7,1.3);if(t>.9)car(c,-300+940*pf,1065+bc(0),360,'fiat',t,(S.gCars||[])[0]);
+  const pt=eb((t-1.2)/.7,1.3);if(t>1.2)car(c,2220-940*pt,1065+bc(2),360,'twingo',t,(S.gCars||[])[2]);
+  const ps=eoc((t-1.05)/.8);if(t>1.05)car(c,960,850+215*ps+bc(1),140+280*ps,'spring',t,(S.gCars||[])[1]);
   /* petits éclairs qui scintillent */
   if(t>3.2){[[560,700,1],[1370,720,2],[780,900,3],[1150,890,4],[500,560,5],[1420,560,6]].forEach(([x,y,k])=>{
     const a=.5+.5*Math.sin(t*5+k*1.7),p=eoc((t-3.2-k*.1)/.4);c.save();c.translate(x,y);c.rotate(Math.sin(t*2+k)*.2);c.scale(p*(.7+.3*a),p*(.7+.3*a));c.fillStyle=LIME;c.strokeStyle=NAVY;c.lineWidth=5;c.lineJoin='round';boltPath(c,64);c.fill();c.stroke();c.restore()})}
@@ -610,11 +614,11 @@ function draw(cv,W,H,t,S){
 
 /* ============ état et interface ============ */
 const $=id=>document.getElementById(id);
-const DEF={mode:'bandeau',num:'1',name:'Siège auto',icon:'auto',note:3.5,pos:'bg',theme:'light',custom:'',style:'stars',dim:true,logo:true,gNameL:'Pierre',gNameR:'Patrick',gTag:['Deux journalistes,','des citadines électriques','et des épreuves pas toujours faciles !'],gMusic:true,gOut:'alpha',tgOn:true,tgS:120,tgX:6,tgY:10,season:'Saison 3',
+const DEF={mode:'bandeau',num:'1',name:'Siège auto',icon:'auto',note:3.5,pos:'bg',theme:'light',custom:'',style:'stars',dim:true,logo:true,gNameL:'Pierre',gNameR:'Patrick',gTag:['Deux journalistes,','des citadines électriques','et des épreuves pas toujours faciles !'],gMusic:true,gOut:'alpha',gCars:['500','DACIA','twingo'],tgOn:true,tgS:120,tgX:6,tgY:10,season:'Saison 3',
   title:'Le verdict',items:[['Siège auto',3.5,'seat'],['Stationnement',4,'park'],['Coffre',3,'trunk'],['Maniabilité',4.5,'wheel']],autoFinal:true,finalNote:3.8,verdict:'',fmt:'1920x1080',fps:'25',pbg:'bg1'};
 let S=Object.assign({},DEF);
 try{const sv=JSON.parse(localStorage.getItem('atelier-notes-watture')||'null');if(sv)S=Object.assign({},DEF,sv)}catch(e){}
-S.gP=Object.assign({pierre:{src:'',zoom:100,ox:0,oy:0},patrick:{src:'',zoom:100,ox:0,oy:0}},S.gP||{});S.gTag=(S.gTag||DEF.gTag).slice();
+S.gP=Object.assign({pierre:{src:'',zoom:100,ox:0,oy:0},patrick:{src:'',zoom:100,ox:0,oy:0}},S.gP||{});S.gTag=(S.gTag||DEF.gTag).slice();S.gCars=(S.gCars||DEF.gCars).slice();
 const save=()=>{try{localStorage.setItem('atelier-notes-watture',JSON.stringify(S))}catch(e){}};
 const avg=()=>S.items.length?Math.round(S.items.reduce((s,x)=>s+(+x[1]||0),0)/S.items.length*10)/10:0;
 function snap(){const o={...S};o.note=clamp(+S.note||0,0,5);o.items=S.items.map(x=>[String(x[0]||''),clamp(+x[1]||0,0,5),x[2]||'auto']);o.finalNote=S.autoFinal?avg():clamp(+S.finalNote||0,0,5);o.name=S.name||'';o.title=S.title||'';o.season=S.season||'';return o}
@@ -639,7 +643,7 @@ function buildUI(){
   $('items').innerHTML=S.items.map((it,i)=>`<div class="item"><input type="text" data-i="${i}" data-k="0" value="${String(it[0]).replace(/"/g,'&quot;')}"><input type="number" min="0" max="5" step="0.5" data-i="${i}" data-k="1" value="${it[1]}"><button data-del="${i}">✕</button></div>`).join('');
   $('tgOn').checked=S.tgOn;$('tgS').value=S.tgS;$('tgX').value=S.tgX;$('tgY').value=S.tgY;tgTxt();
   document.querySelectorAll('.gp').forEach(b=>{const k=b.dataset.k,P=S.gP[k];b.querySelector('.gname').value=k==='pierre'?S.gNameL:S.gNameR;b.querySelector('.gz').value=P.zoom;b.querySelector('.gx').value=P.ox;b.querySelector('.gy').value=P.oy;b.querySelector('.gzt').textContent=Math.round(P.zoom)+' %'});
-  $('gSeason').value=S.season;[0,1,2].forEach(i=>$('gT'+i).value=S.gTag[i]||'');$('gMusic').checked=S.gMusic;$('gAlpha').checked=S.gOut!=='yellow';
+  $('gSeason').value=S.season;[0,1,2].forEach(i=>$('gT'+i).value=S.gTag[i]||'');[0,1,2].forEach(i=>$('gC'+i).value=S.gCars[i]||'');$('gMusic').checked=S.gMusic;$('gAlpha').checked=S.gOut!=='yellow';
   labels();info();setPreview();
 }
 function labels(){const g=S.mode==='generique',y=g&&S.gOut==='yellow';$('expMov').textContent=y?'⬇ Exporter la vidéo MP4 (avec musique)':g?'⬇ Exporter en MOV ProRes 4444 (transparent, avec musique)':'⬇ Exporter en MOV ProRes 4444 (transparent)';$('exp').textContent=y?'Séquence PNG (ZIP)':'Séquence PNG transparente (ZIP)'}
@@ -711,6 +715,7 @@ document.querySelectorAll('.gp').forEach(b=>{
 $('gSeason').oninput=e=>{S.season=e.target.value;gSave()};
 [0,1,2].forEach(i=>$('gT'+i).oninput=e=>{S.gTag[i]=e.target.value;save();t=Math.max(t,6.6);playing=false;$('play').textContent='▶';refresh()});
 $('gAlpha').onchange=e=>{S.gOut=e.target.checked?'alpha':'yellow';save();labels();t=Math.max(t,8.6);refresh()};
+[0,1,2].forEach(i=>$('gC'+i).oninput=e=>{S.gCars[i]=e.target.value;gSave()});
 $('gMusic').onchange=e=>{S.gMusic=e.target.checked;save()};
 $('gMusicFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;customMusic=new Uint8Array(await f.arrayBuffer());$('gMusicInfo').textContent='Musique choisie : '+f.name+' (non conservée à la fermeture de la page).'};
 $('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'⏸':'▶'};
