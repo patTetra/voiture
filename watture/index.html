@@ -39,12 +39,12 @@ details{margin-top:18px;font-size:13px;color:#aab6d6}
 details summary{cursor:pointer;color:#e9ecf2}
 details ol{padding-left:18px}
 #main{display:flex;flex-direction:column;min-width:0;padding:18px;gap:12px}
-#stagewrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
-#stage{position:relative;max-width:100%;max-height:100%;aspect-ratio:16/9;height:100%;border-radius:12px;overflow:hidden;
+#stagewrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;container-type:size}
+#stage{position:relative;width:min(100cqw,100cqh*16/9);height:auto;aspect-ratio:16/9;border-radius:12px;overflow:hidden;
   background:conic-gradient(#3a3f4b 25%,#2a2e38 0 50%,#3a3f4b 0 75%,#2a2e38 0) 0 0/28px 28px}
 #stage.bg1{background:linear-gradient(180deg,#5bb4f0 0%,#a9d8f5 45%,#5a6a78 46%,#2d3540 100%)}
 #stage.bg2{background:#e7e9ee}
-#stage.portrait{aspect-ratio:9/16;height:100%}
+#stage.portrait{aspect-ratio:9/16;width:min(100cqw,100cqh*9/16);height:auto}
 canvas#cv{position:absolute;inset:0;width:100%;height:100%}
 #bar{display:flex;gap:12px;align-items:center}
 #bar button{padding:8px 14px;border-radius:10px;border:1px solid #2a3a6a;background:#101a33;color:#fff;cursor:pointer;font:inherit}
@@ -56,7 +56,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%}
  html,body{height:auto}
  #app{display:flex;flex-direction:column;height:auto;min-height:100%}
  #main{order:-1;position:sticky;top:0;z-index:5;background:#0c1426;padding:10px 10px 8px;gap:8px;box-shadow:0 8px 20px rgba(0,0,0,.45)}
- #stagewrap{flex:none;height:auto;display:block}
+ #stagewrap{flex:none;height:auto;display:block;container-type:normal}
  #stage{width:100%;height:auto;max-height:none;margin:0 auto}
  #stage.portrait{width:auto;height:42vh;max-width:100%}
  #panel{overflow:visible;border-right:0;padding-bottom:60px}
@@ -102,6 +102,14 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%}
   <div class="row" style="margin-top:10px"><input type="color" id="custom" value="#ffd21f"><span class="hint" style="margin:0">couleur d'accent perso (remplace le jaune)</span></div>
   <label>Notation</label>
   <select id="style"><option value="stars">Étoiles</option><option value="gauge">Jauge</option></select>
+
+  <h2>Logo Le Télégramme</h2>
+  <label class="chk"><input type="checkbox" id="tgOn"> Afficher le logo</label>
+  <label>Taille : <b id="tgSt"></b></label><input type="range" id="tgS" min="50" max="400" step="2">
+  <label>Position horizontale : <b id="tgXt"></b></label><input type="range" id="tgX" min="0" max="100" step="0.5">
+  <label>Position verticale : <b id="tgYt"></b></label><input type="range" id="tgY" min="0" max="100" step="0.5">
+  <div class="pos" id="tgPos" style="margin-top:8px"><button data-x="6" data-y="10">↖</button><button data-x="94" data-y="10">↗</button><button data-x="6" data-y="90">↙</button><button data-x="94" data-y="90">↘</button></div>
+  <div class="hint">Tu peux aussi le faire glisser directement dans l'aperçu (mets la lecture en pause pour le voir en continu).</div>
 
   <h2>Export</h2>
   <label>Définition</label>
@@ -383,16 +391,28 @@ function drawFinal(c,Wl,Hl,t,S,th){
 
 /* ============ rendu ============ */
 function duration(S){return S.mode==='bandeau'?tB(S).T:tF_(S).T}
+function tgLogo(c,Wl,Hl,t,S){
+  if(!S.tgOn)return;
+  const T=duration(S),p=eb((t-.25)/.5,1.8),q=1-clamp((t-(T-.3))/.3);
+  if(p<=0||q<=0)return;
+  const s=+S.tgS||120,cx=clamp(S.tgX/100*Wl,s/2,Wl-s/2),cy=clamp(S.tgY/100*Hl,s/2,Hl-s/2),u=s/150;
+  c.save();c.globalAlpha=q;c.translate(cx,cy);c.rotate((1-Math.min(p,1))*-.3);c.scale(p,p);c.scale(u,u);c.translate(-75,-75);
+  c.fillStyle='rgba(19,36,77,.3)';c.fillRect(5,6,150,150);
+  c.fillStyle='#C52A26';c.fillRect(0,0,150,150);
+  c.fillStyle='#fff';c.fillRect(38,33,74,11.5);c.fillRect(38,57,74,11.5);c.fillRect(62,81,27,11.5);c.fillRect(62,106,27,11.5);
+  c.restore();
+}
 function draw(cv,W,H,t,S){
   const c=cv.getContext('2d');c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,W,H);
   const k=W>H?W/1920:W/1180;c.scale(k,k);
   const th=themeOf(S),Wl=W/k,Hl=H/k;
   if(S.mode==='bandeau')drawBandeau(c,Wl,Hl,t,S,th);else drawFinal(c,Wl,Hl,t,S,th);
+  tgLogo(c,Wl,Hl,t,S);
 }
 
 /* ============ état et interface ============ */
 const $=id=>document.getElementById(id);
-const DEF={mode:'bandeau',num:'1',name:'Siège auto',icon:'auto',note:3.5,pos:'bg',theme:'light',custom:'',style:'stars',dim:true,logo:true,season:'Saison 3',
+const DEF={mode:'bandeau',num:'1',name:'Siège auto',icon:'auto',note:3.5,pos:'bg',theme:'light',custom:'',style:'stars',dim:true,logo:true,tgOn:true,tgS:120,tgX:6,tgY:10,season:'Saison 3',
   title:'Le verdict',items:[['Siège auto',3.5,'seat'],['Stationnement',4,'park'],['Coffre',3,'trunk'],['Maniabilité',4.5,'wheel']],autoFinal:true,finalNote:3.8,verdict:'',fmt:'1920x1080',fps:'25',pbg:'bg1'};
 let S=Object.assign({},DEF);
 try{const sv=JSON.parse(localStorage.getItem('atelier-notes-watture')||'null');if(sv)S=Object.assign({},DEF,sv)}catch(e){}
@@ -418,8 +438,10 @@ function buildUI(){
   $('custom').value=S.custom||'#ffd21f';$('style').value=S.style;$('fmt').value=S.fmt;$('fps').value=S.fps;$('pbg').value=S.pbg;$('stage').classList.remove('bg1','bg2');if(S.pbg)$('stage').classList.add(S.pbg);
   $('themes').innerHTML=Object.entries(TH).map(([k,v])=>`<div class="sw ${(S.theme===k)?'on':''}" data-t="${k}" style="background:${v.panel};color:${v.ink};box-shadow:inset 0 0 0 4px ${S.custom||YEL}">${v.n}</div>`).join('');
   $('items').innerHTML=S.items.map((it,i)=>`<div class="item"><input type="text" data-i="${i}" data-k="0" value="${String(it[0]).replace(/"/g,'&quot;')}"><input type="number" min="0" max="5" step="0.5" data-i="${i}" data-k="1" value="${it[1]}"><button data-del="${i}">✕</button></div>`).join('');
+  $('tgOn').checked=S.tgOn;$('tgS').value=S.tgS;$('tgX').value=S.tgX;$('tgY').value=S.tgY;tgTxt();
   info();setPreview();
 }
+function tgTxt(){$('tgSt').textContent=Math.round(S.tgS/1.2)+' %';$('tgXt').textContent=Math.round(S.tgX)+' %';$('tgYt').textContent=Math.round(S.tgY)+' %'}
 function upd(k,v,rebuild){S[k]=v;save();if(rebuild)buildUI();else info();t=0;refresh()}
 
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>upd('mode',b.dataset.mode,true));
@@ -434,6 +456,25 @@ $('custom').oninput=e=>{S.custom=e.target.value;save();buildUI();t=0;refresh()};
 $('style').onchange=e=>upd('style',e.target.value);
 $('dim').onchange=e=>upd('dim',e.target.checked);
 $('logo').onchange=e=>upd('logo',e.target.checked);
+const tgUpd=(k,v)=>{S[k]=v;save();tgTxt();refresh()};
+$('tgOn').onchange=e=>tgUpd('tgOn',e.target.checked);
+$('tgS').oninput=e=>tgUpd('tgS',+e.target.value);
+$('tgX').oninput=e=>tgUpd('tgX',+e.target.value);
+$('tgY').oninput=e=>tgUpd('tgY',+e.target.value);
+$('tgPos').onclick=e=>{const d=e.target.dataset;if(d.x){S.tgX=+d.x;S.tgY=+d.y;save();buildUI();refresh()}};
+(function(){
+  let drag=null;
+  const geo=e=>{const r=cv.getBoundingClientRect(),Wl=cv.width>cv.height?1920:1180,Hl=Wl*cv.height/cv.width,s=+S.tgS||120;
+    return{fx:(e.clientX-r.left)/r.width*Wl,fy:(e.clientY-r.top)/r.height*Hl,Wl,Hl,s,cx:clamp(S.tgX/100*Wl,s/2,Wl-s/2),cy:clamp(S.tgY/100*Hl,s/2,Hl-s/2)}};
+  const hit=g=>S.tgOn&&Math.abs(g.fx-g.cx)<=g.s/2&&Math.abs(g.fy-g.cy)<=g.s/2;
+  cv.style.touchAction='none';
+  cv.addEventListener('pointerdown',e=>{const g=geo(e);if(!hit(g))return;drag={dx:g.cx-g.fx,dy:g.cy-g.fy};cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing';e.preventDefault()});
+  cv.addEventListener('pointermove',e=>{const g=geo(e);if(!drag){cv.style.cursor=hit(g)?'grab':'';return}
+    S.tgX=Math.round(clamp((g.fx+drag.dx)/g.Wl*100,0,100)*2)/2;S.tgY=Math.round(clamp((g.fy+drag.dy)/g.Hl*100,0,100)*2)/2;
+    $('tgX').value=S.tgX;$('tgY').value=S.tgY;tgTxt();refresh()});
+  const end=()=>{if(drag){drag=null;cv.style.cursor='';save()}};
+  cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+})();
 $('season').oninput=e=>upd('season',e.target.value);
 $('ftitle').oninput=e=>upd('title',e.target.value);
 $('verdict').oninput=e=>upd('verdict',e.target.value);
