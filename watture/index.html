@@ -812,7 +812,16 @@ function makeZip(files){
 const baseOf=st=>st.mode==='fin'?'ecran-de-fin':st.mode==='generique'?'generique-en-watture':st.mode==='bandeau'?`epreuve${st.num?'-'+st.num:''}-${slug(st.name)}`:`note-finale-${slug(st.title)}`;
 const nFrames=(st,fps)=>st.mode==='generique'?Math.round(duration(st)*fps):Math.ceil(duration(st)*fps)+2;
 const slug=s=>(s||'note').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'note';
-function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+let dlUrl=null;
+function dl(blob,name){
+  const url=URL.createObjectURL(blob);if(dlUrl)URL.revokeObjectURL(dlUrl);dlUrl=url;
+  const mo=(blob.size/1048576).toFixed(blob.size>1e7?0:1);
+  let box=$('dlBox');if(!box){box=document.createElement('div');box.id='dlBox';box.style.cssText='margin-top:8px;display:flex;gap:8px;flex-wrap:wrap';$('expMsg').after(box)}
+  box.innerHTML='';
+  const a=document.createElement('a');a.href=url;a.download=name;a.className='btn2';a.style.cssText='padding:10px 14px;text-decoration:none;display:inline-block;color:#13244d;background:#ffd21f;font-weight:800;border-radius:10px';a.textContent='⬇ Enregistrer '+name+' ('+mo+' Mo)';box.appendChild(a);
+  try{const file=new File([blob],name,{type:blob.type});if(navigator.canShare&&navigator.canShare({files:[file]})){const b=document.createElement('button');b.className='btn2';b.style.cssText='padding:10px 14px';b.textContent='Partager / Enregistrer dans Fichiers…';b.onclick=()=>navigator.share({files:[file]}).catch(()=>{});box.appendChild(b)}}catch(_){}
+  try{a.click()}catch(_){}
+}
 $('exp').onclick=async()=>{
   const st=snap(),[W,H]=size(),fps=+S.fps,T=duration(st),N=nFrames(st,fps);
   const base=baseOf(st);
@@ -895,13 +904,13 @@ $('expMov').onclick=async()=>{
       if(isGen&&st.gMusic){const mb=customMusic||Uint8Array.from(atob(MUSIC_B64),ch=>ch.charCodeAt(0));await f.writeFile('music.bin',mb);a.push('-i','music.bin');mus=true}
       a.push('-filter_complex','[0:v]format=rgba,split[c][a];[c]scale=out_color_matrix=bt709:out_range=tv,format=yuv444p10le[y];[a]alphaextract[m];[y][m]alphamerge[o]','-map','[o]');
       if(mus)a.push('-map','1:a','-c:a','pcm_s16le','-t',String(T));
-      a.push('-c:v','prores_ks','-profile:v','4444','-alpha_bits','16','-vendor','apl0','-colorspace','bt709','-color_primaries','bt709','-color_trc','bt709','out.mov');
+      a.push('-c:v','prores_ks','-profile:v','4444','-alpha_bits','16','-bits_per_mb',String(W>2000?400:700),'-vendor','apl0','-colorspace','bt709','-color_primaries','bt709','-color_trc','bt709','out.mov');
       code=await f.exec(a);
     }
     ffLog=null;if(code!==0)throw new Error('ffmpeg a renvoyé le code '+code);
-    const data=await f.readFile(isMp4?'out.mp4':'out.mov');
+    let data;try{data=await f.readFile(isMp4?'out.mp4':'out.mov')}catch(err){throw new Error('lecture du fichier impossible, probablement trop gros pour la mémoire du navigateur : choisis 1920 × 1080 ou la séquence PNG (ZIP)')}
     dl(new Blob([data],{type:isMp4?'video/mp4':'video/quicktime'}),base+(isMp4?'.mp4':'.mov'));
-    msg('✔ '+(isMp4?'MP4':'MOV')+' prêt : '+base+(isMp4?'.mp4':'.mov'));
+    msg('✔ '+(isMp4?'MP4':'MOV')+' prêt : '+base+(isMp4?'.mp4':'.mov')+'. Si le téléchargement ne démarre pas tout seul, appuie sur le bouton jaune ci-dessous.');
   }catch(e){
     ffLog=null;msg('⚠ Export MOV impossible ('+(e&&e.message||e)+'). Utilise la séquence PNG (ZIP) en secours.'+((location.protocol==='file:'||location.origin==='null')?' Astuce : ouvre l’appli depuis une vraie adresse web (GitHub Pages) plutôt qu’en fichier local ou en aperçu.':''));
   }finally{
